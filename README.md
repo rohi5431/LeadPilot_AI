@@ -1,111 +1,194 @@
-# LeadPilot AI 🚀
-> **AI-Powered Lead Prioritization & Sales Action Assistant for Real-Estate**
-> *Built for Masal AI — FDE Assignment (Round 2)*
+# LeadPilot AI
+
+> AI-powered real-estate lead prioritization and sales assistant.
+
+LeadPilot AI helps real-estate salespeople turn inbound lead information into structured sales intelligence. It uses Gemini to analyze customer intent, requirements, concerns, priority, and recommended actions, while providing a contextual AI assistant and AI-powered call preparation.
 
 ---
 
-## ⚡ 30-Second Elevator Pitch (Interview Quick Reference)
+## 🔗 Demo & Repository
 
-> **LeadPilot AI** solves the inbound lead qualification bottleneck for real-estate sales professionals. When a customer sends a raw property enquiry, LeadPilot AI uses **Google Gemini** (`gemini-2.0-flash`) and **Pydantic** structured JSON schemas to evaluate buyer intent, calculate a **0–100 Priority Score** (`HOT` / `WARM` / `COLD`), isolate contextual AI follow-up chat, and generate a **1-Click 7-Section AI Call Prep Brief** right before the phone call. It turns messy text into clear, prioritized, actionable sales pipeline intelligence without inventing unstated facts.
+- **Live Demo:** `YOUR_LIVE_URL_HERE`
+- **GitHub Repository:** `YOUR_GITHUB_REPOSITORY_URL`
+
+> The final submission is intended to provide a public live URL that can be opened without local setup.
 
 ---
 
-## 📸 Key Product Features & Visual UX Workflow
+## 1. Overview
 
+### Problem Statement
+A real-estate salesperson receives multiple inbound property enquiries daily across web forms, emails, and messaging apps. Evaluating these enquiries manually is slow, inefficient, and leads to delayed responses. A salesperson needs to quickly understand:
+
+- What the customer wants (property type, size, location)
+- Their budget
+- Their buying timeline
+- Customer intent (end-use homebuyer vs investor)
+- Explicit concerns or objections
+- Which leads require urgent attention
+- What tactical action should happen next
+
+LeadPilot AI converts raw lead enquiry text into structured AI-generated sales intelligence, enabling sales representatives to prioritize high-intent buyers instantly and prepare effectively before dialing.
+
+### Product Workflow
+
+```text
+Inbound Lead
+     ↓
+Lead Intake Form
+     ↓
+Gemini AI Analysis
+     ↓
+Structured Sales Intelligence
+     ↓
+AI Priority Score (0–100)
+     ↓
+Priority Classification (HOT / WARM / COLD)
+     ↓
+Prioritized Lead List
+     ↓
+Lead Detail View
+     ├── 6-Point AI Analysis
+     ├── AI Call Prep Briefing
+     └── Contextual Grounded AI Assistant
+     ↓
+Salesperson Action & Phone Call
 ```
-PRIORITIZE ──────────────► UNDERSTAND ──────────────► ACT
-Lead Cards sorted by       2-Column Gemini AI         1-Click 7-Section
-0–100 Priority Score       Intelligence & Intent      AI Call Prep & Chat
-```
-
-### 1. 🎯 Intake & Instant Priority Scoring
-* **Mandatory Contact Validation**: Name, Mobile (Indian 10-12 digit regex), Email, Location, Requirement, Budget, Timeline, Message.
-* **Instant Priority Categorization**:
-  * 🔥 **HOT (80–100)**: Immediate timeline, clear high budget, ready buyer.
-  * ☀️ **WARM (50–79)**: Moderate timeline, flexible budget.
-  * ❄️ **COLD (0–49)**: Vague requirements, distant timeline.
-* **One-Click Filtering & Search**: Interactive stat cards (`ALL`, `HOT`, `WARM`, `COLD`) and real-time multi-field search.
-
-### 2. 🧠 Structured AI Lead Analysis
-* **6 Mandatory Sales Outputs** generated natively via Gemini `response_schema`:
-  1. **Lead Summary**: Concise buyer overview.
-  2. **Customer Intent**: Core buying motivation (end-use vs investment).
-  3. **Key Requirements**: Extracted preference list.
-  4. **Objections & Concerns**: Identified financial, location, or timing gaps.
-  5. **Recommended Next Action**: Tactical next step for the salesperson.
-  6. **Suggested Response**: Draft WhatsApp / Email opening text.
-
-### 3. 💬 Contextual Lead-Isolated AI Chat
-* Salespeople can ask free-text questions (*"How should I handle their budget concern?"* or *"Draft a WhatsApp follow-up"*).
-* **Interactive Quick Prompt Pills** in empty chat states for 1-click execution.
-* **Strict Grounding Rules**: Prevents cross-lead leakage and refuses to hallucinate unstated customer details.
-
-### 4. 📞 Signature Custom Feature: AI Call Prep Briefing
-* Positioned in the **Right Sales Action Sidebar** for human-centered workflow.
-* Generates a **7-Section Briefing** on demand:
-  1. **Call Objective**: Single-sentence focus for the call.
-  2. **Key Talking Points**: 3–6 tailored bullet points.
-  3. **Likely Objection**: Grounded potential pushback.
-  4. **Suggested Objection Handling**: Direct strategy to resolve objection.
-  5. **Questions to Ask**: 3–4 natural discovery questions.
-  6. **Suggested Opening Line**: Personal opening greeting incorporating lead facts.
-  7. **Desired Outcome**: Specific call target.
 
 ---
 
-## 🎙️ 30-Minute Technical & Product Interview Talking Points
+## 2. Features & Assignment Coverage
 
-| Interview Topic | Key Technical / Product Answer |
-|---|---|
-| **Why FastAPI + Pydantic?** | Built-in async performance, automatic OpenAPI documentation, and seamless integration with Gemini `response_schema` for guaranteed JSON key rendering without regex parsing. |
-| **Why Server-Side Key Isolation?** | `GEMINI_API_KEY` is loaded exclusively via `pydantic-settings` inside backend service modules (`ai_service.py`), preventing key leakage to the frontend bundle. |
-| **How is AI Hallucination Prevented?** | Strict system prompts enforce grounding rules: if a detail (e.g. loan pre-approval) is missing, the AI explicitly states *"Information not available in lead details"* instead of making assumptions. |
-| **How is Chat Context Isolated?** | Chat memory is stored in a dictionary keyed strictly by `lead_id` (`chat_db: dict[str, list[ChatMessage]]`). Lead A cannot view or bleed context into Lead B. |
-| **Why Call Prep in the Sidebar?** | Placing the trigger and resulting brief in the right column creates a clear "Sales Action Hub", allowing salespeople to review the left main analysis while reading talking points during a call. |
-| **What happens if Gemini is Down?** | Resilient fallback architecture: if Gemini times out, the lead is saved with `ai_analysis = None` (HTTP 201 partial success) so user data is never lost. |
+| Feature Requirement | Status | Implementation Details |
+|---|---|---|
+| **Multiple Lead Storage** | ✅ Complete | In-memory storage (`_leads: dict[str, LeadResponse]`) supporting multiple leads simultaneously. |
+| **Dynamic Priority Scoring** | ✅ Complete | Quantitative `priority_score` (0–100) computed by Gemini based on budget clarity, timeline urgency, and requirement specificity. |
+| **Priority Categorization** | ✅ Complete | Categorical tags: `HOT` (80–100), `WARM` (50–79), and `COLD` (0–49). |
+| **Pre-Sorted Lead List** | ✅ Complete | `GET /api/leads` automatically pre-sorts leads by `priority_score` descending (highest priority first). |
+| **Interactive Filtering & Search** | ✅ Complete | Client-side filter pills (`ALL`, `HOT`, `WARM`, `COLD`), search query matching, and multi-criteria sorting. |
+| **6-Part AI Analysis Breakdown** | ✅ Complete | Returns Lead Summary, Customer Intent, Key Requirements, Objections/Concerns, Recommended Next Action, and Suggested Response. |
+| **Contextual AI Chat Assistant** | ✅ Complete | Grounded Q&A chatbot isolated per lead ID (`chat_db: dict[str, list[ChatMessage]]`). |
+| **Custom Feature: AI Call Prep** | ✅ Complete | 1-click **"Prepare Me for Call"** generating a 7-section structured briefing (objectives, talking points, objections, handling, discovery questions, opening line, outcome). |
+| **Network Interrupt Resilience** | ✅ Complete | Preserves lead intake payload if AI drops offline (`ai_analysis = None`, HTTP 201) and exposes a 1-click `POST /api/leads/{id}/retry` endpoint. |
+
+### Custom Signature Feature: AI Call Preparation Briefing
+Before placing a phone call to a lead, sales representatives often spend time reviewing past notes and guessing what objections might arise. LeadPilot AI features a signature **AI Call Prep** generator that produces a 7-section structured briefing in under 2 seconds:
+
+1. **Call Objective**: Single-sentence primary goal for the call.
+2. **Key Talking Points**: 3–6 tailored bullet points referencing actual customer requirements.
+3. **Likely Objection**: Grounded potential customer pushback based on their message.
+4. **Suggested Objection Handling Strategy**: Direct tactical strategy to resolve the objection.
+5. **Questions to Ask**: Exactly 3–4 natural discovery questions to clarify missing details.
+6. **Suggested Opening Line**: Personalized greeting incorporating lead context.
+7. **Desired Call Outcome**: Specific targeted result by call end.
+
+### Network Interruption Resilience & 1-Click AI Retry
+If network connectivity drops or the Gemini API times out during lead creation, LeadPilot AI ensures data integrity:
+1. **Data Preservation**: The raw lead payload is stored in memory (`ai_analysis = None`) and returned with HTTP 201 Created.
+2. **1-Click Retry UI**: The lead detail view detects missing analysis and displays a `🔄 Retry AI Analysis` banner, triggering `POST /api/leads/{id}/retry` once connectivity is restored.
 
 ---
 
-## 🛠️ Technology Stack & System Architecture
+## 3. Gemini Integration & AI Architecture
 
-```
+- **Official SDK**: Built using Google's official `google-genai` Python SDK (`google.genai`).
+- **Configured Model**: Defaults to `gemini-3.5-flash-lite` (configurable via `GEMINI_MODEL` environment variable).
+- **Native Structured JSON Output**: Utilizes Gemini's native `response_mime_type="application/json"` combined with Pydantic `response_schema` definitions (`LeadAnalysis` and `CallPrep`). This guarantees strict JSON output conforming to backend schemas without fragile regex markdown parsing.
+- **Server-Side API Key Isolation**: The `GEMINI_API_KEY` is managed exclusively on the backend via `pydantic-settings` in `backend/app/config.py`. It is never exposed in API responses or frontend environment bundles.
+
+---
+
+## 4. System Architecture & Data Flow
+
+```text
 ┌─────────────────────────────────────────────────────────┐
 │              Browser Client (React 18 SPA)              │
-│  Vite · TypeScript · Tailwind CSS · React Router v6     │
+│       Vite · React Router v6 · Tailwind CSS · TypeScript │
 └────────────────────────────┬────────────────────────────┘
-                             │ HTTP REST / JSON
+                             │ HTTP / JSON (REST)
                              ▼
 ┌─────────────────────────────────────────────────────────┐
 │                 FastAPI Backend Server                  │
-│       Uvicorn ASGI · Pydantic Schemas · Python 3.12    │
+│        Uvicorn ASGI · Pydantic Schemas · Python 3.12    │
 ├────────────────────────────┬────────────────────────────┤
-│       Service Layer        │     Volatile Memory        │
-│  - lead_service.py         │  - leads_db: list[Lead]    │
-│  - ai_service.py           │  - chat_db: dict[id, Chat] │
+│       Service Layer        │      In-Memory State       │
+│  - lead_service.py         │  - _leads: dict[str, Lead] │
+│  - ai_service.py           │  - _chat_history: dict     │
+│  - chat_service.py         │                            │
 │  - call_prep_service.py    │                            │
 └────────────────────────────┴─────────────┬──────────────┘
                                            │ HTTPS (google-genai SDK)
                                            ▼
                              ┌────────────────────────────┐
-                             │     Google Gemini API      │
-                             │  gemini-2.0-flash / JSON   │
+                             │      Google Gemini API     │
+                             │   gemini-3.5-flash-lite    │
                              └────────────────────────────┘
 ```
 
+### Request Lifecycle
+1. **Lead Intake**: Client submits lead data via `POST /api/leads`. Pydantic validates input schemas (mobile number regex: 10–12 digits, email regex).
+2. **Persistence**: Lead is stored in the volatile `_leads` dictionary.
+3. **AI Orchestration**: `ai_service.py` constructs a grounded prompt and invokes `client.models.generate_content` with `response_schema=LeadAnalysis`.
+4. **Analysis & Ranking**: The structured output (`priority_score`, `priority`, 6 analysis fields) is attached to the lead.
+5. **Prioritized Retrieval**: `GET /api/leads` sorts stored leads by `priority_score` descending before returning JSON to the client.
+6. **Contextual Operations**: `POST /api/leads/{id}/chat` loads lead history from `_chat_history[lead_id]`, sends full grounded context to Gemini, and appends user/assistant messages. `POST /api/leads/{id}/call-prep` checks analysis prerequisite and returns the 7-section briefing.
+
 ---
 
-## ⚙️ Quickstart & Local Setup
+## 5. Technical Decisions & Trade-offs
+
+| Decision | Selected Option | Alternative Considered | Rationale |
+|---|---|---|---|
+| **Backend Framework** | **FastAPI** | Django / Flask | High async performance, automatic OpenAPI documentation, and native Pydantic schema validation matching Gemini SDK requirements. |
+| **Frontend Stack** | **React + TypeScript + Vite** | Next.js / Vanilla JS | Fast HMR dev loop, lightweight SPA bundling, and strict type alignment between backend models and frontend interfaces. |
+| **Storage Architecture** | **In-Memory Volatile Storage** | PostgreSQL / SQLite | Zero database dependency for rapid evaluation setup; dictionary storage provides O(1) lookups by lead UUID. |
+| **Structured AI Outputs** | **Pydantic `response_schema`** | Unstructured text parsing | Guarantees deterministic JSON output keys required by UI components, preventing frontend rendering errors. |
+| **Resilience Model** | **Decoupled 1-Click Retry** | Background Task Queues | Avoids heavy infrastructure dependencies (Redis/Celery) while ensuring lead contact data is saved even during API outages. |
+
+---
+
+## 6. Contextual AI Grounding & Anti-Hallucination
+
+LeadPilot AI enforces strict prompt engineering rules to prevent AI hallucinations and cross-lead data contamination:
+
+1. **Information Gap Acknowledgment**: Prompts explicitly instruct Gemini: *"If information is missing (e.g. loan status or specific location preference), explicitly state 'Information not available in lead details' rather than inventing facts."*
+2. **No Unwarranted Financial Assumptions**: Prompts forbid assuming a customer requires a home loan unless explicitly mentioned in their enquiry.
+3. **Context Isolation**: Chat conversations are isolated per lead UUID (`_chat_history[lead_id]`). Lead A's conversation context is never passed into Lead B's prompt.
+4. **Grounded Prompts**: Prompt builders in `backend/app/prompts/` explicitly inject the raw lead fields and existing analysis into every chat and call-prep API call.
+
+---
+
+## 7. Known Limitations
+
+- **Volatile Storage**: Storage uses in-memory dictionaries (`_leads` and `_chat_history`). Rebooting the Uvicorn server resets active session data.
+- **API Network Dependency**: AI lead analysis, contextual chat, and call prep require an active internet connection and valid Gemini API credentials.
+- **Prerequisite Dependency**: Generating an AI Call Prep briefing requires a lead to have existing AI analysis (`ai_analysis !== null`).
+
+---
+
+## 8. Future Improvements
+
+- **Persistent Database Storage**: Integration with PostgreSQL or SQLite via SQLAlchemy to preserve leads across server restarts.
+- **User Authentication & RBAC**: Multi-user JWT authentication allowing sales managers to assign leads to specific representatives.
+- **Channel Integrations**: Automated WhatsApp Webhooks and SMS triggers to send initial client responses directly.
+- **Multi-Tenant CRM Sync**: Two-way synchronization with platforms like HubSpot or Salesforce.
+
+---
+
+## 9. How to Run the Project
 
 ### Prerequisites
-* **Python 3.10+** & `pip`
-* **Node.js 18+** & `npm`
-* **Google Gemini API Key** ([Get key here](https://aistudio.google.com/))
+- **Python 3.10+**
+- **Node.js 18+** & `npm`
+- **Google Gemini API Key** ([Get key from Google AI Studio](https://aistudio.google.com/))
 
 ### 1. Backend Setup
 
 ```bash
 cd backend
 python -m venv .venv
+
+# Activate Virtual Environment:
 # On Windows:
 .\.venv\Scripts\Activate.ps1
 # On macOS/Linux:
@@ -119,15 +202,15 @@ Create `backend/.env`:
 APP_NAME="LeadPilot AI"
 ENVIRONMENT="development"
 BACKEND_CORS_ORIGINS="http://localhost:5173"
-GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-GEMINI_MODEL="gemini-2.0-flash"
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
 
-Start backend:
+Start backend development server:
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
-*Swagger API Docs available at:* `http://localhost:8000/docs`
+*API documentation available at:* `http://localhost:8000/docs`
 
 ### 2. Frontend Setup
 
@@ -141,50 +224,45 @@ Create `frontend/.env`:
 VITE_API_BASE_URL="http://localhost:8000"
 ```
 
-Start frontend dev server:
+Start frontend development server:
 ```bash
 npm run dev
 ```
-*Access application at:* `http://localhost:5173`
+*Application available at:* `http://localhost:5173`
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 10. Test Results & Verification
 
-### Automated Backend Test Suite (47/47 Passed)
+### Automated Backend Test Suite (47 Passed Tests)
+Run unit and schema validation tests:
 ```bash
 python -m pytest backend/app/tests -v
 ```
-* **`test_call_prep.py`**: Validates 7-section Pydantic payload parsing and `MissingAnalysisError` guard.
-* **`test_contact_info.py`**: Tests Indian phone number regex, optional email validation, and backward compatibility.
-* **`test_lead_analysis_schema.py`**: Verifies score boundaries (0–100) and strict priority category literals (`HOT`/`WARM`/`COLD`).
+- **`test_call_prep.py`**: Validates 7-section Pydantic payload parsing and `MissingAnalysisError` guards.
+- **`test_contact_info.py`**: Validates Indian phone number regex, optional email formatting, and backward compatibility.
+- **`test_lead_analysis_schema.py`**: Validates priority score boundaries (0–100) and strict priority category enum values (`HOT`/`WARM`/`COLD`).
+
+```text
+============================= 47 passed in 1.13s ==============================
+```
 
 ### E2E Live Integration Test
+Run live integration test against Uvicorn and Gemini API:
 ```bash
 python backend/app/tests/test_e2e_live.py
 ```
-*Executes an 11-step integration test against the running Uvicorn server and real Gemini API.*
 
-### Frontend Production Build Verification
+### Frontend Production Build
+Verify TypeScript compilation and asset bundling:
 ```bash
 cd frontend
 npm run build
 ```
-*Compiles TypeScript (`tsc -b`) and bundles static assets with Vite with **0 errors**.*
+- **Result**: `tsc -b && vite build` completed with **0 errors**.
 
 ---
 
-## 📂 Project Repository Navigation
+## 11. AI Coding Tools Disclosure
 
-* 📄 **[`PRD.md`](./PRD.md)**: Product Requirements Document, User Personas, Core Requirements, AI Grounding Rules, Non-Goals, Roadmap.
-* 🏗️ **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**: System Architecture, Pydantic Data Models, Prompt Builders, Service Layer, Trade-offs.
-* 📋 **[`TASK.md`](./TASK.md)**: System Workflow Breakdown, Component Responsibilities, Error Matrix, Compliance Audits.
-
----
-
-## 👤 Author & Assignment Context
-
-* **Project**: LeadPilot AI
-* **Assignment**: Masal AI — Forward Deployed Engineer (FDE) Round 2
-* **Domain**: Real-Estate B2B SaaS / Sales Co-Pilot
-* **Status**: 100% Complete & Production-Ready 🚀
+During the development of LeadPilot AI, AI assistance (specifically Google Antigravity / DeepMind coding tools) was utilized for pair programming, generating test suite boilerplate, refining Tailwind CSS responsive layouts, and establishing Pydantic schema structures. All architectural decisions, prompt design rules, state isolation logic, and custom feature implementations were audited, verified, and tested for production readiness.
