@@ -107,9 +107,9 @@ export default function LeadForm() {
 
   function handleAutofillSample() {
     setForm({
-      name: 'Priya Sharma',
+      name: 'Rahul Sharma',
       mobileNumber: '9876543210',
-      email: 'priya.sharma@example.com',
+      email: 'rahul.sharma@example.com',
       location: 'Bandra West, Mumbai',
       propertyRequirement: '3 BHK Luxury Apartment',
       budget: '3.5 Crores',

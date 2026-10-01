@@ -3,7 +3,7 @@
 ---
 
 ## ⚡ 30-Second Technical Explanation (Interview Quick Reference)
-> **LeadPilot AI** is built on a modern decoupled web architecture featuring a **React 18 + TypeScript + Vite** frontend and a high-performance **FastAPI** Python backend. The backend manages request validation via **Pydantic** schemas, isolates lead data and chat histories in memory, and integrates with the **Google Gemini API** (`google-genai` SDK) using native structured JSON output (`response_schema`). All Gemini API keys remain strictly server-side. The API is modularly structured into dedicated services and prompts for Lead Analysis, Priority Scoring, Contextual Chat, and AI Call Preparation.
+> **LeadPilot AI** is built on a modern decoupled web architecture featuring a **React 18 + TypeScript + Vite** frontend and a high-performance **FastAPI** Python backend. The backend manages request validation via **Pydantic** schemas, isolates lead data and chat histories in memory, and integrates with the **Google Gemini API** (`google-genai` SDK) using native structured JSON output (`response_schema`). All Gemini API keys remain strictly server-side. The API is modularly structured into dedicated services and prompts for Lead Analysis, Priority Scoring, Contextual Chat, AI Call Preparation, and Network Retry Handling.
 
 ---
 
@@ -24,7 +24,7 @@ The system follows a clean client-server architecture with clear separation of c
 ├────────────────────────────┬────────────────────────────┤
 │       Service Layer        │      In-Memory State       │
 │  - lead_service.py         │  - leads_db: list[Lead]    │
-│  - ai_service.py           │  - chat_db: dict[id, Chat]  │
+│  - ai_service.py           │  - chat_db: dict[id, Chat] │
 │  - chat_service.py         │                            │
 │  - call_prep_service.py    │                            │
 └────────────────────────────┴─────────────┬──────────────┘
@@ -32,7 +32,6 @@ The system follows a clean client-server architecture with clear separation of c
                                            ▼
                              ┌────────────────────────────┐
                              │      Google Gemini API     │
-                             │  gemini-3.5-flash-lite /   │
                              │      gemini-2.0-flash      │
                              └────────────────────────────┘
 ```
@@ -246,6 +245,7 @@ Click "Prepare Me for Call" ──► POST /api/leads/{id}/call-prep
 | `GET` | `/api/leads` | `app/api/leads.py` | Get all leads (priority sorted) | `200` |
 | `POST` | `/api/leads` | `app/api/leads.py` | Create lead & trigger AI analysis | `201`, `422`, `500` |
 | `GET` | `/api/leads/{id}` | `app/api/leads.py` | Fetch single lead by ID | `200`, `404` |
+| `POST` | `/api/leads/{id}/retry` | `app/api/leads.py` | Retry AI analysis for lead | `200`, `404`, `503` |
 | `GET` | `/api/leads/{id}/chat` | `app/api/chat.py` | Fetch lead chat history | `200`, `404` |
 | `POST` | `/api/leads/{id}/chat` | `app/api/chat.py` | Send message to contextual AI chat | `200`, `404`, `503` |
 | `POST` | `/api/leads/{id}/call-prep` | `app/api/call-prep.py` | Generate 7-section AI Call Prep | `200`, `404`, `422`, `503` |
@@ -254,10 +254,14 @@ Click "Prepare Me for Call" ──► POST /api/leads/{id}/call-prep
 
 ## 12. Error Handling & Resiliency
 
-- **Validation Errors (`HTTP 422`)**: Triggered automatically by Pydantic when required fields or field formats (e.g. invalid mobile number) fail validation.
+- **Validation Errors (`HTTP 422`)**: Triggered automatically by Pydantic when required fields or field formats fail validation.
 - **Resource Not Found (`HTTP 404`)**: Returned when requesting an invalid `lead_id`.
 - **Precondition Failed (`HTTP 422`)**: Triggered by Call Prep service if attempting to generate prep for a lead without prior AI analysis (`MissingAnalysisError`).
 - **AI Service Unavailable (`HTTP 503`)**: Gracefully caught when Gemini API calls encounter timeouts or API issues. During lead creation, the lead is saved with `ai_analysis=None` so user data is never lost.
+
+### 12.1 Network Reconnection & 1-Click Retry (`POST /api/leads/{id}/retry`)
+- **Problem**: If network connectivity drops during lead intake, the lead is preserved with `ai_analysis = None`.
+- **Solution**: The backend exposes `POST /api/leads/{id}/retry`, and the frontend displays a 1-click **`🔄 Retry AI Analysis`** button on the lead detail view as soon as connectivity is restored.
 
 ---
 
@@ -304,6 +308,7 @@ Click "Prepare Me for Call" ──► POST /api/leads/{id}/call-prep
 | **In-Memory Storage** | Zero database dependency; fast setup | Data resets on backend restart; acceptable for assignment evaluation scope. |
 | **Server-Side LLM Orchestration** | Secures API keys and standardizes prompt formatting | Adds small HTTP hop latency between client and Gemini API. |
 | **Structured Output Schemas** | Guaranteed JSON structures for UI components | Strict validation fails if model produces malformed keys; mitigated by Pydantic validators. |
+| **Manual 1-Click Retry** | Instant user control without heavy message queue infra | Requires manual user click; mitigated by clear UI status indicator when offline. |
 
 ---
 

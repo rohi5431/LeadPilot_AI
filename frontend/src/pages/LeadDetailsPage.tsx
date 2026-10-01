@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getLeadById, generateCallPrep } from '../services/api'
+import { getLeadById, generateCallPrep, retryLeadAnalysis } from '../services/api'
 import type { Lead } from '../types/lead'
 import type { CallPrep } from '../types/callPrep'
 import AppHeader from '../components/AppHeader'
@@ -33,6 +33,8 @@ export default function LeadDetailsPage() {
   const [callPrep, setCallPrep] = useState<CallPrep | null>(null)
   const [isGeneratingCallPrep, setIsGeneratingCallPrep] = useState(false)
   const [callPrepError, setCallPrepError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
 
   const handleGenerateCallPrep = async () => {
     if (!leadId || isGeneratingCallPrep) return
@@ -46,6 +48,20 @@ export default function LeadDetailsPage() {
       setCallPrepError(err instanceof Error ? err.message : 'Failed to generate call preparation brief.')
     } finally {
       setIsGeneratingCallPrep(false)
+    }
+  }
+
+  const handleRetryAnalysis = async () => {
+    if (!leadId || isRetrying) return
+    setIsRetrying(true)
+    setRetryError(null)
+    try {
+      const updated = await retryLeadAnalysis(leadId)
+      setLead(updated)
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : 'Retry failed. Check internet connection.')
+    } finally {
+      setIsRetrying(false)
     }
   }
 
@@ -206,13 +222,42 @@ export default function LeadDetailsPage() {
               {lead.aiAnalysis !== null ? (
                 <LeadAnalysisCard analysis={lead.aiAnalysis} />
               ) : (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
-                  <p className="text-sm font-bold text-amber-800">
-                    AI analysis is currently unavailable for this lead.
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-amber-700">
-                    The lead was saved successfully, but the Gemini analysis could not be completed.
-                  </p>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm">
+                  <div>
+                    <p className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                      ⚡ AI Analysis Interrupted / Pending
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-amber-800">
+                      The lead was saved successfully during intake, but Gemini AI analysis was interrupted due to network connectivity.
+                    </p>
+                    {retryError && (
+                      <p className="mt-1 text-xs font-bold text-red-600">
+                        {retryError}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleRetryAnalysis}
+                    disabled={isRetrying}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-700 active:bg-amber-800 transition-all shadow-sm disabled:opacity-50 flex-shrink-0"
+                  >
+                    {isRetrying ? (
+                      <>
+                        <svg className="h-4 w-4 animate-spin text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Retrying Analysis…
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Retry AI Analysis
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
 

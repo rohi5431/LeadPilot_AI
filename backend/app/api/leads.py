@@ -40,3 +40,17 @@ def get_lead(lead_id: str) -> LeadResponse:
     if lead is None:
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
+
+
+@router.post("/leads/{lead_id}/retry", response_model=LeadResponse)
+def retry_lead(lead_id: str) -> LeadResponse:
+    """
+    Retry AI analysis for a lead whose prior analysis failed due to network interruption.
+    """
+    try:
+        return lead_service.retry_lead_analysis(lead_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    except lead_service.AIServiceError as exc:
+        raise HTTPException(status_code=503, detail=f"AI Service unavailable: {exc}")
+

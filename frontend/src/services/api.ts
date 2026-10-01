@@ -97,6 +97,18 @@ export async function getLeadById(leadId: string): Promise<Lead> {
   return mapLead(data)
 }
 
+export async function retryLeadAnalysis(leadId: string): Promise<Lead> {
+  const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}/retry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (response.status === 404) throw new Error('Lead not found')
+  if (!response.ok) throw new Error(`Failed to retry lead analysis (HTTP ${response.status})`)
+  const data = await response.json()
+  return mapLead(data)
+}
+
+
 // ---------------------------------------------------------------------------
 // Chat — Phase 6
 // ---------------------------------------------------------------------------

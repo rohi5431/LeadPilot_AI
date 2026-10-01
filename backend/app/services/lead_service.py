@@ -102,11 +102,17 @@ def create_lead(data: LeadCreate) -> LeadResponse:
 
 def get_all_leads() -> list[LeadResponse]:
     """
-    Return all stored leads as a list.
+    Return all stored leads sorted by priority_score DESCENDING.
     Returns an empty list when no leads have been created yet.
-    Order reflects insertion order (Python dict preserves insertion order 3.7+).
+    Leads with failed/missing AI analysis are placed at the end.
     """
-    return list(_leads.values())
+    leads = list(_leads.values())
+    return sorted(
+        leads,
+        key=lambda lead: (lead.ai_analysis.priority_score if lead.ai_analysis else -1),
+        reverse=True,
+    )
+
 
 
 def get_lead_by_id(lead_id: str) -> LeadResponse | None:
@@ -115,3 +121,49 @@ def get_lead_by_id(lead_id: str) -> LeadResponse | None:
     The API route is responsible for converting None → 404.
     """
     return _leads.get(lead_id)
+
+
+def retry_lead_analysis(lead_id: str) -> LeadResponse:
+    """
+    Retry AI analysis for an existing lead whose prior analysis failed or is missing.
+
+    Flow:
+        1. Fetch stored lead (or raise ValueError if 404).
+        2. Construct LeadCreate payload from existing fields.
+        3. Call ai_service.analyze_lead().
+        4. Attach analysis to lead and update storage.
+        5. Return updated LeadResponse.
+    """
+    lead = _leads.get(lead_id)
+    if not lead:
+        raise ValueError("Lead not found")
+
+    data = LeadCreate(
+        name=lead.name,
+        mobile_number=lead.mobile_number,
+        email=lead.email,
+        location=lead.location,
+        property_requirement=lead.property_requirement,
+        budget=lead.budget,
+        buying_timeline=lead.buying_timeline,
+        customer_message=lead.customer_message,
+    )
+
+    analysis = ai_service.analyze_lead(data)
+
+    updated_lead = LeadResponse(
+        id=lead.id,
+        name=lead.name,
+        mobile_number=lead.mobile_number,
+        email=lead.email,
+        location=lead.location,
+        property_requirement=lead.property_requirement,
+        budget=lead.budget,
+        buying_timeline=lead.buying_timeline,
+        customer_message=lead.customer_message,
+        ai_analysis=analysis,
+    )
+    _leads[lead_id] = updated_lead
+    logger.info("Retried and updated AI analysis for lead %s successfully.", lead_id)
+    return updated_lead
+

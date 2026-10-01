@@ -19,7 +19,7 @@ The system architecture divides operational responsibilities into ten core tasks
 6. **Lead Details Navigation**: Routing to individual lead pages (`/leads/:leadId`).
 7. **Lead-Isolated Contextual Chat**: Processing user questions grounded in lead data and session history without cross-talk.
 8. **AI Call Prep Generation**: Producing a 7-section structured briefing for sales call execution.
-9. **Resilient Validation & Error Handling**: Gracefully handling missing data, invalid formats, 404s, and AI API downtime.
+9. **Resilient Validation & Network Retry**: Gracefully handling missing data, invalid formats, 404s, API timeouts, and offering 1-click AI retry (`POST /api/leads/{id}/retry`).
 10. **Automated Testing & Build Verification**: Enforcing regression prevention with 47 unit tests and E2E suites.
 
 ---
@@ -162,7 +162,8 @@ Salesperson Types Question ──► POST /api/leads/{id}/chat
 | **Invalid Mobile/Email** | Non-Indian number or malformed email regex | Pydantic `LeadCreate` | `HTTP 422 Unprocessable Entity` |
 | **Missing Lead ID** | Requesting invalid UUID | API Router `get_lead_by_id` | `HTTP 404 Not Found` |
 | **Call Prep Without Analysis** | `ai_analysis` is `None` | `call_prep_service.py` | `HTTP 422` ("AI analysis required first") |
-| **Gemini Timeout / Error** | Network outage or bad API key | `ai_service.py` try...except | Partial Success: Lead saved with `ai_analysis=None` |
+| **Gemini Timeout / Interruption** | Network outage or bad API key | `ai_service.py` try...except | Partial Success: Lead saved with `ai_analysis=None` |
+| **Re-run AI Analysis** | User clicks "Retry AI Analysis" button | `POST /api/leads/{id}/retry` | HTTP 200: Retries Gemini call & attaches analysis |
 | **Chat API Downtime** | Gemini service failure during chat | `chat_service.py` | `HTTP 503` ("AI assistant temporarily unavailable") |
 
 ---
@@ -199,8 +200,8 @@ Salesperson Types Question ──► POST /api/leads/{id}/chat
 ## 12. Testing & Verification Tasks
 
 - **Backend Pytest Suite** (`python -m pytest backend/app/tests -v`):
-  - `test_contact_info.py`: Validates mobile number regex, email regex, and backward compatibility.
-  - `test_call_prep.py`: Tests Call Prep schema generation and missing analysis exception handling.
+  - `test_call_prep.py`: Validates mobile number regex, email regex, and backward compatibility.
+  - `test_contact_info.py`: Tests Call Prep schema generation and missing analysis exception handling.
   - `test_lead_analysis_schema.py`: Tests 0–100 priority score constraints and priority category validation.
   - Total: 47 passed unit tests.
 - **E2E Live Suite** (`python backend/app/tests/test_e2e_live.py`):
