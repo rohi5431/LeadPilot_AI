@@ -311,7 +311,7 @@ npm run build
 
 ---
 
-## 12. Roadmap
+## 12. Future Improvement
 
 - **Persistent storage:** PostgreSQL or SQLite via SQLAlchemy.
 - **Authentication and RBAC:** multi-user JWT auth so managers can assign leads to representatives.
@@ -325,6 +325,6 @@ npm run build
 AI assistance was used during development as a development and reasoning aid.
 
 - **ChatGPT** — Used for architecture discussions, understanding system design and technical trade-offs, prompt design, debugging, and reasoning through implementation decisions.
-- **Claude** — Used for coding assistance, test-suite boilerplate, responsive Tailwind CSS refinement, and Pydantic schema scaffolding.
+- **Claude** — Used for presentation and documentation support, including creating and structuring the **ARCHITECTURE.md, TASK.md, PRD.md, and README.md** files.
 
 All architectural decisions, prompt design rules, state isolation logic, and custom feature implementation were reviewed, verified, and tested by the author. The author is responsible for understanding and explaining the submitted code and technical decisions.
