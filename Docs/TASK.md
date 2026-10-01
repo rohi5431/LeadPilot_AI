@@ -1,30 +1,51 @@
 # LeadPilot AI — System Workflow & Implementation Tasks
 
----
+## Contents
 
-## ⚡ 30-Second System Workflow (Interview Quick Reference)
-> **LeadPilot AI** executes a continuous multi-step lead processing workflow. Incoming leads enter via `LeadForm.tsx`, trigger server-side Pydantic regex validation, and get persisted to memory. The backend immediately dispatches the lead context to Google Gemini API via `ai_service.py`, returning a 6-part JSON analysis and a 0–100 Priority Score (`HOT`/`WARM`/`COLD`). Leads are served via `GET /api/leads` pre-sorted by score. Salespeople can navigate to any lead to engage in grounded, lead-isolated AI chat (`chat_service.py`) and generate a 1-click 7-section **AI Call Prep** brief (`call_prep_service.py`) prior to calling the client.
-
----
-
-## 1. System Responsibilities
-
-The system architecture divides operational responsibilities into ten core tasks:
-
-1. **Lead Intake**: Capturing and validating 8 lead fields (*Name, Mobile, Email, Location, Requirement, Budget, Timeline, Message*).
-2. **In-Memory Storage**: Managing thread-safe volatile storage (`leads_db` and `chat_db`).
-3. **AI Lead Analysis**: Interfacing with Gemini API to extract intent, summary, requirements, objections, actions, and suggested replies.
-4. **Priority Generation**: Computing a 0–100 score and assigning `HOT`, `WARM`, or `COLD` priority tags.
-5. **Prioritized Lead Listing**: Rendering a responsive list pre-sorted by priority score.
-6. **Lead Details Navigation**: Routing to individual lead pages (`/leads/:leadId`).
-7. **Lead-Isolated Contextual Chat**: Processing user questions grounded in lead data and session history without cross-talk.
-8. **AI Call Prep Generation**: Producing a 7-section structured briefing for sales call execution.
-9. **Resilient Validation & Network Retry**: Gracefully handling missing data, invalid formats, 404s, API timeouts, and offering 1-click AI retry (`POST /api/leads/{id}/retry`).
-10. **Automated Testing & Build Verification**: Enforcing regression prevention with 47 unit tests and E2E suites.
+1. [Overview](#1-overview)
+2. [Core Tasks](#2-core-tasks)
+3. [Workflows](#3-workflows)
+4. [Validation & Error Handling](#4-validation--error-handling)
+5. [Module Responsibilities](#5-module-responsibilities)
+6. [Testing & Verification](#6-testing--verification)
+7. [Limitations](#7-limitations)
+8. [Future Extensions](#8-future-extensions-planned--not-implemented)
+9. [Cross-references](#9-cross-references)
 
 ---
 
-## 2. Lead Creation Workflow
+## 1. Overview
+
+LeadPilot AI runs a continuous lead-processing workflow:
+
+1. A lead is submitted through `LeadForm.tsx`.
+2. The backend validates it (Pydantic) and stores it in memory.
+3. The lead is sent to the Gemini API (`ai_service.py`), which returns a 6-part JSON analysis plus a 0–100 priority score (`HOT` / `WARM` / `COLD`).
+4. `GET /api/leads` returns leads sorted by score.
+5. From a lead's page, the salesperson can chat with a lead-isolated AI assistant (`chat_service.py`) and generate a 7-section **AI Call Prep** brief (`call_prep_service.py`).
+
+---
+
+## 2. Core Tasks
+
+| # | Task | Responsibility | Key Files |
+|---|------|----------------|-----------|
+| 1 | Lead Intake | Capture and validate 8 fields: Name, Mobile, Email, Location, Requirement, Budget, Timeline, Message | `LeadForm.tsx`, `schemas/lead.py` |
+| 2 | In-Memory Storage | Thread-safe volatile storage in `leads_db` and `chat_db` | `lead_service.py` |
+| 3 | AI Lead Analysis | Call Gemini to extract summary, intent, requirements, objections, next action, suggested reply | `ai_service.py`, `prompts/lead_analysis.py` |
+| 4 | Priority Generation | Compute 0–100 score and assign `HOT` / `WARM` / `COLD` | `ai_service.py` |
+| 5 | Prioritized Lead Listing | Render a responsive list sorted by priority score | `LeadsPage.tsx`, `GET /api/leads` |
+| 6 | Lead Details Navigation | Route to individual lead pages | `/leads/:leadId`, `LeadDetailsPage.tsx` |
+| 7 | Lead-Isolated Chat | Answer questions grounded in lead data and session history, with no cross-lead leakage | `chat_service.py`, `prompts/lead_chat.py`, `LeadChatCard.tsx` |
+| 8 | AI Call Prep | Produce a 7-section briefing for the sales call | `call_prep_service.py`, `prompts/call_prep.py`, `CallPrepCard.tsx` |
+| 9 | Validation & Retry | Handle missing data, invalid formats, 404s, API timeouts; offer 1-click AI retry | `POST /api/leads/{id}/retry` |
+| 10 | Testing & Build Verification | 47 unit tests, E2E suite, frontend build check | `backend/app/tests/` |
+
+---
+
+## 3. Workflows
+
+### 3.1 Lead Creation
 
 ```
 User Fills Form ──► Frontend Validation (LeadForm.tsx) ──► POST /api/leads
@@ -53,32 +74,29 @@ User Fills Form ──► Frontend Validation (LeadForm.tsx) ──► POST /api
                                                     Return LeadResponse (201)
 ```
 
-- **Frontend File**: `frontend/src/components/LeadForm.tsx`
-- **API Endpoint**: `POST /api/leads`
-- **Backend Router**: `backend/app/api/leads.py`
-- **Service Module**: `backend/app/services/lead_service.py`
-- **AI Module**: `backend/app/services/ai_service.py`
+- **Frontend**: `frontend/src/components/LeadForm.tsx`
+- **Endpoint**: `POST /api/leads` (router: `backend/app/api/leads.py`)
+- **Services**: `lead_service.py`, `ai_service.py`
 
----
+### 3.2 AI Analysis
 
-## 3. AI Analysis Workflow
+1. `LeadCreate` data is passed to `ai_service.generate_lead_analysis()`.
+2. `build_lead_analysis_prompt()` formats the lead information and injects strict grounding rules.
+3. `client.models.generate_content()` is called with `response_mime_type="application/json"` and `response_schema=LeadAnalysis`.
+4. The model returns a 6-part analysis plus score and priority:
 
-1. **Input Payload**: `LeadCreate` data sent to `ai_service.generate_lead_analysis()`.
-2. **Prompt Construction**: `build_lead_analysis_prompt()` formats lead information and injects strict grounding rules.
-3. **Gemini Invocation**: `client.models.generate_content()` called with `response_mime_type="application/json"` and `response_schema=LeadAnalysis`.
-4. **Structured JSON Output**: Model populates the 6 required outputs:
-   - `lead_summary`: Overview of buyer persona.
-   - `customer_intent`: Primary acquisition goal.
-   - `key_requirements`: List of extracted preferences.
-   - `objections_concerns`: Identified hesitations or information gaps.
-   - `recommended_next_action`: Immediate step for representative.
-   - `suggested_response`: Draft message for client.
-   - `priority_score`: Integer `0–100`.
-   - `priority`: Categorical enum (`HOT` / `WARM` / `COLD`).
+| Field | Description |
+|-------|-------------|
+| `lead_summary` | Overview of buyer persona |
+| `customer_intent` | Primary acquisition goal |
+| `key_requirements` | List of extracted preferences |
+| `objections_concerns` | Identified hesitations or information gaps |
+| `recommended_next_action` | Immediate step for the representative |
+| `suggested_response` | Draft message for the client |
+| `priority_score` | Integer `0–100` |
+| `priority` | Enum: `HOT` / `WARM` / `COLD` |
 
----
-
-## 4. Lead Prioritization Workflow
+### 3.3 Prioritization
 
 ```
 Gemini Evaluates Budget, Timeline & Requirements ──► Computes priority_score (0–100)
@@ -98,21 +116,17 @@ Gemini Evaluates Budget, Timeline & Requirements ──► Computes priority_sco
                                                 leads at top of LeadsPage.tsx
 ```
 
----
+### 3.4 Lead Details
 
-## 5. Lead Details Workflow
+- **Route**: `/leads/:leadId` → `frontend/src/pages/LeadDetailsPage.tsx`
+- **API**: `GET /api/leads/{id}`
+- **Sub-components**:
+  - `LeadCard`: contact details, requirements, budget, timeline, customer message
+  - `LeadAnalysisCard`: priority badge, score progress bar, 6-part AI breakdown
+  - `CallPrepCard`: trigger button and 7-section brief
+  - `LeadChatCard`: grounded conversational assistant
 
-- **Route**: `/leads/:leadId` handled by `frontend/src/pages/LeadDetailsPage.tsx`.
-- **API Call**: `GET /api/leads/{id}` fetches full lead payload.
-- **Rendered Sub-components**:
-  - `LeadCard`: Contact details (Name, Mobile, Email, Location), requirements, budget, timeline, customer message.
-  - `LeadAnalysisCard`: Priority badge, score progress bar, 6-part AI breakdown.
-  - `CallPrepCard`: Interactive button trigger and 7-section call preparation brief.
-  - `LeadChatCard`: Interactive grounded conversational assistant widget.
-
----
-
-## 6. Contextual Chat Workflow
+### 3.5 Contextual Chat
 
 ```
 Salesperson Types Question ──► POST /api/leads/{id}/chat
@@ -133,101 +147,105 @@ Salesperson Types Question ──► POST /api/leads/{id}/chat
                       Return ChatResponse JSON ──► Render in LeadChatCard.tsx
 ```
 
-- **Isolation Mechanism**: Chat histories are stored in `chat_db: dict[str, list[ChatMessage]]` keyed strictly by `lead_id`. E2E tests verify zero cross-lead leakage.
+- **Isolation**: `chat_db: dict[str, list[ChatMessage]]` is keyed strictly by `lead_id`. E2E tests verify zero cross-lead leakage.
 
----
-
-## 7. AI Call Prep Workflow
+### 3.6 AI Call Prep
 
 1. Salesperson clicks **"Prepare Me for Call"** in `CallPrepCard.tsx`.
-2. Frontend dispatches `POST /api/leads/{leadId}/call-prep`.
-3. Backend service `call_prep_service.generate_call_prep()` verifies lead exists (`404`) and `ai_analysis !== null` (`422`).
-4. Prompt builder `app/prompts/call_prep.py` compiles lead info, analysis, priority score, and chat context.
-5. Gemini API generates structured JSON enforcing the `CallPrep` Pydantic schema:
-   - **Call Objective**
-   - **Key Talking Points** (3–6 bullet points)
-   - **Likely Objection**
-   - **Suggested Objection Handling**
-   - **Questions to Ask** (3–4 natural language questions)
-   - **Suggested Opening**
-   - **Desired Outcome**
-6. UI renders structured brief in `CallPrepCard.tsx`.
+2. Frontend sends `POST /api/leads/{leadId}/call-prep`.
+3. `call_prep_service.generate_call_prep()` verifies the lead exists (`404`) and `ai_analysis` is not null (`422`).
+4. `app/prompts/call_prep.py` compiles lead info, analysis, priority score, and chat context.
+5. Gemini returns structured JSON matching the `CallPrep` Pydantic schema:
+   - Call Objective
+   - Key Talking Points (3–6 bullets)
+   - Likely Objection
+   - Suggested Objection Handling
+   - Questions to Ask (3–4 natural-language questions)
+   - Suggested Opening
+   - Desired Outcome
+6. `CallPrepCard.tsx` renders the brief.
 
 ---
 
-## 8. Validation & Error Workflow
+## 4. Validation & Error Handling
 
-| Scenario | Trigger / Condition | Handled By | Outcome / Status Code |
-|---|---|---|---|
-| **Invalid Mobile/Email** | Non-Indian number or malformed email regex | Pydantic `LeadCreate` | `HTTP 422 Unprocessable Entity` |
-| **Missing Lead ID** | Requesting invalid UUID | API Router `get_lead_by_id` | `HTTP 404 Not Found` |
-| **Call Prep Without Analysis** | `ai_analysis` is `None` | `call_prep_service.py` | `HTTP 422` ("AI analysis required first") |
-| **Gemini Timeout / Interruption** | Network outage or bad API key | `ai_service.py` try...except | Partial Success: Lead saved with `ai_analysis=None` |
-| **Re-run AI Analysis** | User clicks "Retry AI Analysis" button | `POST /api/leads/{id}/retry` | HTTP 200: Retries Gemini call & attaches analysis |
-| **Chat API Downtime** | Gemini service failure during chat | `chat_service.py` | `HTTP 503` ("AI assistant temporarily unavailable") |
-
----
-
-## 9. Frontend Component Responsibilities
-
-- `LeadForm.tsx`: Input form for 8 lead fields with inline regex validation and error states.
-- `LeadCard.tsx`: Displays lead contact details, requirement attributes, and budget/timeline badges.
-- `LeadAnalysisCard.tsx`: Visual priority score progress bar, priority badge, and 6-section AI analysis display.
-- `LeadChatCard.tsx`: Interactive chat widget supporting contextual follow-up Q&A and message history.
-- `CallPrepCard.tsx`: Action button and 7-section structured call preparation brief container.
-- `AppHeader.tsx`: Responsive navigation bar displaying app title and primary route links.
+| Scenario | Trigger | Handled By | Outcome |
+|----------|---------|------------|---------|
+| Invalid mobile/email | Non-Indian number or malformed email | Pydantic `LeadCreate` | `422 Unprocessable Entity` |
+| Missing lead | Invalid or unknown lead ID | `get_lead_by_id` in router | `404 Not Found` |
+| Call Prep without analysis | `ai_analysis` is `None` | `call_prep_service.py` | `422` ("AI analysis required first") |
+| Gemini timeout / interruption | Network outage or bad API key | `ai_service.py` try/except | Partial success: lead saved with `ai_analysis=None` |
+| Re-run AI analysis | User clicks "Retry AI Analysis" | `POST /api/leads/{id}/retry` | `200`: Gemini retried, analysis attached |
+| Chat API downtime | Gemini failure during chat | `chat_service.py` | `503` ("AI assistant temporarily unavailable") |
 
 ---
 
-## 10. Backend Module Responsibilities
+## 5. Module Responsibilities
 
-- `backend/app/main.py`: FastAPI app initialization, CORS middleware configuration, route mounting.
-- `backend/app/config.py`: Environment configuration loading (`GEMINI_API_KEY`, `GEMINI_MODEL`, `BACKEND_CORS_ORIGINS`).
-- `backend/app/schemas/`: Pydantic schema declarations (`lead.py`, `lead_analysis.py`, `chat.py`, `call_prep.py`).
-- `backend/app/services/`: Core logic modules (`lead_service.py`, `ai_service.py`, `chat_service.py`, `call_prep_service.py`).
-- `backend/app/prompts/`: System prompt template generators (`lead_analysis.py`, `lead_chat.py`, `call_prep.py`).
+### Frontend (`frontend/src/`)
 
----
+| File | Responsibility |
+|------|----------------|
+| `LeadForm.tsx` | Input form for 8 lead fields with inline regex validation and error states |
+| `LeadCard.tsx` | Contact details, requirement attributes, budget/timeline badges |
+| `LeadAnalysisCard.tsx` | Priority score bar, priority badge, 6-section AI analysis |
+| `LeadChatCard.tsx` | Chat widget with contextual follow-up Q&A and message history |
+| `CallPrepCard.tsx` | Action button and 7-section call prep container |
+| `AppHeader.tsx` | Responsive navigation bar with app title and route links |
 
-## 11. AI Prompt Responsibilities
+### Backend (`backend/app/`)
 
-- **`lead_analysis.py`**: Instructs model to analyze raw lead message, extract buyer requirements, highlight explicit hesitations, and compute a 0–100 Priority Score.
-- **`lead_chat.py`**: Instructs model to answer salesperson questions strictly using available lead details and session history; enforces refusal to hallucinate unstated facts.
-- **`call_prep.py`**: Instructs model to format a 7-section briefing, enforcing 3–4 natural discovery questions and prohibiting financing assumptions unless explicitly requested.
+| Path | Responsibility |
+|------|----------------|
+| `main.py` | FastAPI init, CORS middleware, route mounting |
+| `config.py` | Environment config (`GEMINI_API_KEY`, `GEMINI_MODEL`, `BACKEND_CORS_ORIGINS`) |
+| `schemas/` | Pydantic schemas: `lead.py`, `lead_analysis.py`, `chat.py`, `call_prep.py` |
+| `services/` | Core logic: `lead_service.py`, `ai_service.py`, `chat_service.py`, `call_prep_service.py` |
+| `prompts/` | Prompt generators (see below) |
 
----
+### Prompts (`backend/app/prompts/`)
 
-## 12. Testing & Verification Tasks
-
-- **Backend Pytest Suite** (`python -m pytest backend/app/tests -v`):
-  - `test_call_prep.py`: Validates mobile number regex, email regex, and backward compatibility.
-  - `test_contact_info.py`: Tests Call Prep schema generation and missing analysis exception handling.
-  - `test_lead_analysis_schema.py`: Tests 0–100 priority score constraints and priority category validation.
-  - Total: 47 passed unit tests.
-- **E2E Live Suite** (`python backend/app/tests/test_e2e_live.py`):
-  - Validates 11-step end-to-end integration against live FastAPI server and Gemini API.
-- **Frontend Build Validation** (`npm run build`):
-  - Enforces TypeScript compilation (`tsc -b`) and Vite production bundling (`0 errors`).
-
----
-
-## 13. Current System Limitations
-
-- **Volatile Storage**: Storage uses python memory lists (`leads_db`) and dictionaries (`chat_db`). Rebooting the backend wipes active session data.
-- **API Network Dependency**: AI features require internet connectivity and valid Gemini API credentials.
-- **Prerequisite Sequential Step**: Call Prep requires prior AI analysis generation on the lead.
+| File | Instructs the model to |
+|------|------------------------|
+| `lead_analysis.py` | Analyze the raw lead message, extract buyer requirements, highlight explicit hesitations, compute a 0–100 priority score |
+| `lead_chat.py` | Answer strictly from lead details and session history; refuse to hallucinate unstated facts |
+| `call_prep.py` | Format a 7-section briefing with 3–4 natural discovery questions; no financing assumptions unless explicitly requested |
 
 ---
 
-## 14. Future Extensions *(Planned / Not Implemented)*
+## 6. Testing & Verification
 
-- **Persistent Database**: Integration with PostgreSQL or MongoDB via SQLAlchemy / Motor.
-- **Authentication & RBAC**: JWT-based user authentication for sales managers and reps.
-- **CRM Integrations**: Two-way synchronization with HubSpot, Salesforce, or LeadSquared.
-- **Multi-channel Communication**: Automated WhatsApp Webhooks and IVR calling triggers.
+| Suite | Command | Coverage |
+|-------|---------|----------|
+| Backend unit tests | `python -m pytest backend/app/tests -v` | 47 passing tests (below) |
+| E2E live | `python backend/app/tests/test_e2e_live.py` | 11-step integration against live FastAPI server and Gemini API |
+| Frontend build | `npm run build` | TypeScript compile (`tsc -b`) and Vite bundle, 0 errors |
+
+Backend test files:
+- `test_call_prep.py`: mobile number regex, email regex, backward compatibility
+- `test_contact_info.py`: Call Prep schema generation, missing-analysis exception handling
+- `test_lead_analysis_schema.py`: 0–100 score constraints, priority category validation
 
 ---
 
-*Cross-references*:
-- Product & Business requirements: see [`PRD.md`](./PRD.md)
-- System Architecture details: see [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+## 7. Limitations
+
+- **Volatile storage**: data lives in Python memory (`leads_db`, `chat_db`); restarting the backend wipes all session data.
+- **Network dependency**: AI features need internet access and valid Gemini API credentials.
+- **Sequential prerequisite**: Call Prep requires AI analysis to exist first.
+
+---
+
+## 8. Future Extensions *(Planned / Not Implemented)*
+
+- **Persistent database**: PostgreSQL or MongoDB via SQLAlchemy / Motor
+- **Authentication & RBAC**: JWT-based auth for sales managers and reps
+- **CRM integrations**: two-way sync with HubSpot, Salesforce, or LeadSquared
+- **Multi-channel communication**: WhatsApp webhooks and IVR calling triggers
+
+---
+
+## 9. Cross-references
+
+- Product & business requirements: [`PRD.md`](./PRD.md)
+- System architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
