@@ -1,317 +1,308 @@
-# LeadPilot AI — System Architecture
+# LeadPilot AI: System Architecture and Workflow
 
----
+This document describes how LeadPilot AI is structured, how data moves through it, and how its AI components are designed. For setup instructions see the [README](./README.md); for requirements see [`PRD.md`](./PRD.md) and [`TASK.md`](./TASK.md).
 
-## ⚡ 30-Second Technical Explanation (Interview Quick Reference)
-> **LeadPilot AI** is built on a modern decoupled web architecture featuring a **React 18 + TypeScript + Vite** frontend and a high-performance **FastAPI** Python backend. The backend manages request validation via **Pydantic** schemas, isolates lead data and chat histories in memory, and integrates with the **Google Gemini API** (`google-genai` SDK) using native structured JSON output (`response_schema`). All Gemini API keys remain strictly server-side. The API is modularly structured into dedicated services and prompts for Lead Analysis, Priority Scoring, Contextual Chat, AI Call Preparation, and Network Retry Handling.
+## Table of Contents
+
+1. [Architecture Overview](#1-architecture-overview)
+2. [Technology Stack](#2-technology-stack)
+3. [Backend Component Design](#3-backend-component-design)
+4. [Workflows](#4-workflows)
+5. [AI Architecture](#5-ai-architecture)
+6. [Data Model](#6-data-model)
+7. [API Reference](#7-api-reference)
+8. [Error Handling and Resilience](#8-error-handling-and-resilience)
+9. [Security](#9-security)
+10. [Testing Strategy](#10-testing-strategy)
+11. [Deployment Architecture](#11-deployment-architecture)
+12. [Design Trade-offs](#12-design-trade-offs)
 
 ---
 
 ## 1. Architecture Overview
 
-The system follows a clean client-server architecture with clear separation of concerns:
+LeadPilot AI is a decoupled client-server application. A React single-page application communicates over REST/JSON with a FastAPI backend, which validates requests, keeps state in memory, and orchestrates calls to the Google Gemini API. The Gemini API key exists only on the backend.
 
+```mermaid
+flowchart TB
+    subgraph Client["Browser Client: React 18 SPA"]
+        UI["Vite, React Router v6, Tailwind CSS, TypeScript"]
+    end
+
+    subgraph Server["FastAPI Backend: Uvicorn ASGI, Pydantic, Python 3.12"]
+        direction LR
+        subgraph Services["Service Layer"]
+            S1[lead_service.py]
+            S2[ai_service.py]
+            S3[chat_service.py]
+            S4[call_prep_service.py]
+        end
+        subgraph State["In-Memory State"]
+            M1["_leads: dict[str, LeadResponse]"]
+            M2["_chat_history: dict[str, list[ChatMessage]]"]
+        end
+    end
+
+    Gemini["Google Gemini API<br/>gemini-3.5-flash-lite"]
+
+    Client -->|"HTTP / JSON (REST)"| Server
+    Server -->|"HTTPS (google-genai SDK)<br/>structured JSON"| Gemini
 ```
-┌─────────────────────────────────────────────────────────┐
-│              Browser Client (React 18 SPA)              │
-│       Vite · React Router v6 · Tailwind CSS · TypeScript │
-└────────────────────────────┬────────────────────────────┘
-                             │ HTTP / JSON (REST)
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                 FastAPI Backend Server                  │
-│        Uvicorn ASGI · Pydantic Schemas · Python 3.12    │
-├────────────────────────────┬────────────────────────────┤
-│       Service Layer        │      In-Memory State       │
-│  - lead_service.py         │  - leads_db: list[Lead]    │
-│  - ai_service.py           │  - chat_db: dict[id, Chat] │
-│  - chat_service.py         │                            │
-│  - call_prep_service.py    │                            │
-└────────────────────────────┴─────────────┬──────────────┘
-                                           │ HTTPS (Native JSON)
-                                           ▼
-                             ┌────────────────────────────┐
-                             │      Google Gemini API     │
-                             │      gemini-2.0-flash      │
-                             └────────────────────────────┘
-```
+
+### Design principles
+
+- **Separation of concerns:** routers handle HTTP, services hold business logic, prompt builders own prompt text, and schemas define every contract.
+- **Schema-first AI output:** Gemini responses are constrained by Pydantic models, so the UI always receives predictable JSON.
+- **Server-side AI orchestration:** the frontend never talks to Gemini directly.
+- **Fail safe on data:** a lead is saved before AI analysis runs, so an AI outage never loses customer data.
 
 ---
 
 ## 2. Technology Stack
 
-| Layer | Technology | Version | Purpose | Why Selected |
-|---|---|---|---|---|
-| **Frontend UI** | React | `18.3.1` | Component-based UI library | Enables interactive lead management and reactive UI state updates. |
-| **Frontend Language**| TypeScript | `5.5.3` | Type safety | Ensures strict type safety between frontend models and backend responses. |
-| **Build & Dev Server**| Vite | `5.4.1` | Fast frontend bundler | Extremely fast HMR development and lightweight production builds. |
-| **Styling** | Tailwind CSS | `3.4.10` | Utility-first CSS framework | Rapid styling with consistent visual hierarchy and responsive layouts. |
-| **Routing** | React Router | `6.26.1` | Client-side routing | Single-page application navigation (`/leads`, `/leads/:id`, `/add-lead`). |
-| **Backend Framework**| FastAPI | `0.112.2` | High-performance API | Automatic OpenAPI docs, high performance, and native Pydantic integration. |
-| **Data Validation** | Pydantic | `2.8.2` | Data schemas & AI validation | Enforces strict payload validation and guaranteed Gemini JSON outputs. |
-| **ASGI Server** | Uvicorn | `0.30.6` | Asynchronous web server | Fast production-ready server hosting the FastAPI application. |
-| **AI SDK** | `google-genai` | `1.5.0` | Official Gemini Python SDK | Native support for Gemini models and `response_schema` structured outputs. |
-| **Testing** | pytest | `7.4.4` | Automated backend testing | Comprehensive unit and integration testing suite (47 passed tests). |
+| Layer | Technology | Version | Role |
+|---|---|---|---|
+| Frontend UI | React | 18.3.1 | Component-based UI and reactive state for lead management |
+| Frontend language | TypeScript | 5.5.3 | Type safety between frontend models and backend responses |
+| Build tool | Vite | 5.4.1 | Fast HMR development and lightweight production builds |
+| Styling | Tailwind CSS | 3.4.10 | Utility-first styling and responsive layouts |
+| Routing | React Router | 6.26.1 | Client-side routes: `/leads`, `/leads/:id`, `/add-lead` |
+| Backend framework | FastAPI | 0.112.2 | Async API with automatic OpenAPI docs |
+| Validation | Pydantic | 2.8.2 | Request validation and Gemini `response_schema` definitions |
+| ASGI server | Uvicorn | 0.30.6 | Hosts the FastAPI application |
+| AI SDK | `google-genai` | 1.5.0 | Official Gemini SDK with structured output support |
+| Testing | pytest | 7.4.4 | Backend unit and integration tests (47 passing) |
 
----
+### Rationale and trade-offs
 
-## 3. Why These Technologies
-
-### FastAPI
-- **Why Selected**: Lightweight, asynchronous Python framework with built-in Pydantic support.
-- **Problem Solved**: Eliminates boilerplate validation code and provides seamless async integration with LLM APIs.
-- **Trade-off**: Requires careful async call management to avoid blocking the main event loop.
-
-### React + TypeScript
-- **Why Selected**: Industry-standard SPA framework with strong static typing.
-- **Problem Solved**: Prevents runtime type mismatch errors between frontend and backend endpoints.
-- **Trade-off**: Client-side rendering requires handling initial load and loading/error states explicitly.
-
-### Pydantic
-- **Why Selected**: Native integration with both FastAPI and Gemini API `response_schema`.
-- **Problem Solved**: Guarantees that LLM outputs match the exact JSON keys required by the frontend UI components.
-- **Trade-off**: Schema changes must be synchronized across Pydantic models and TypeScript interfaces.
-
-### Google Gemini API (`google-genai` SDK)
-- **Why Selected**: Required AI provider with fast latency and native structured JSON output capability.
-- **Problem Solved**: Eliminates fragile regex parsing of raw markdown LLM responses.
-- **Trade-off**: Requires external internet connectivity and valid API credentials.
-
----
-
-## 4. System Architecture Diagram
-
-```
-                             ┌───────────────────────────────┐
-                             │       Salesperson Browser     │
-                             └───────────────┬───────────────┘
-                                             │
-                                             ▼
-                             ┌───────────────────────────────┐
-                             │     React 18 Frontend SPA     │
-                             │  LeadsPage / LeadDetailsPage  │
-                             └───────────────┬───────────────┘
-                                             │ HTTP REST
-                                             ▼
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                FastAPI Backend Application                             │
-│                                                                                        │
-│  ┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────────┐  │
-│  │   Leads API Router   │    │   Chat API Router    │    │  Call Prep API Router    │  │
-│  │  (POST/GET /api/leads│    │ (POST/GET /chat)     │    │  (POST /call-prep)       │  │
-│  └──────────┬───────────┘    └──────────┬───────────┘    └────────────┬─────────────┘  │
-│             │                           │                             │                │
-│             ▼                           ▼                             ▼                │
-│  ┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────────┐  │
-│  │     lead_service     │    │     chat_service     │    │    call_prep_service     │  │
-│  └──────────┬───────────┘    └──────────┬───────────┘    └────────────┬─────────────┘  │
-│             │                           │                             │                │
-│             └───────────────────────────┼─────────────────────────────┘                │
-│                                         ▼                                              │
-│                              ┌──────────────────────┐                                  │
-│                              │      ai_service      │                                  │
-│                              └──────────┬───────────┘                                  │
-└─────────────────────────────────────────┼──────────────────────────────────────────────┘
-                                          │ HTTPS (google-genai SDK)
-                                          ▼
-                               ┌──────────────────────┐
-                               │   Google Gemini API  │
-                               └──────────────────────┘
-```
-
----
-
-## 5. Request & Data Flow
-
-### Lead Creation & Analysis Flow
-```
-User Submits Form ──► Frontend Validation ──► POST /api/leads
-                                                   │
-                                                   ▼
-                                         Pydantic Schema Validation
-                                                   │
-                                                   ▼
-                                         Save Lead to Memory (leads_db)
-                                                   │
-                                                   ▼
-                                         Call Gemini API (ai_service)
-                                                   │
-                         ┌─────────────────────────┴────────────────────────┐
-                         ▼                                                  ▼
-             [ Success: Gemini Returns JSON ]                    [ Exception / Timeout ]
-                         │                                                  │
-                         ▼                                                  ▼
-             Attach LeadAnalysis to Lead                        Save Lead with ai_analysis=None
-                         │                                                  │
-                         └─────────────────────────┬────────────────────────┘
-                                                   ▼
-                                        Return LeadResponse (HTTP 201)
-```
-
----
-
-## 6. AI Architecture & Security
-
-- **Server-Side Key Isolation**: The `GEMINI_API_KEY` is loaded exclusively inside `backend/app/config.py` using `pydantic-settings`. It is never exposed in API responses or frontend environment variables.
-- **Structured Schema Enforcement**: All prompt requests pass Pydantic schema classes (`LeadAnalysis`, `CallPrep`) to Gemini via `response_schema`.
-
-```
-FastAPI Server ──( GEMINI_API_KEY + Prompt + Schema )──► Gemini API ──( Structured JSON )──► Pydantic Model
-```
-
----
-
-## 7. Prompt Architecture
-
-The system uses three modular prompt builders located in `backend/app/prompts/`:
-
-1. **`lead_analysis.py`**:
-   - **Context**: Captures lead details (*Name, Mobile, Email, Location, Requirement, Budget, Timeline, Message*).
-   - **Rules**: Explicitly distinguishes customer objections from missing info. Bans unsupported market claims.
-   - **Output**: 6-section breakdown + Priority Score (`0–100`) + Priority Category (`HOT/WARM/COLD`).
-
-2. **`lead_chat.py`**:
-   - **Context**: Injects full lead details, AI analysis, and historical chat messages.
-   - **Rules**: Strict grounding. For missing details, explicitly forces the AI to reply *"The customer's phone number/email/preference is not available in the lead details"* rather than inventing values.
-
-3. **`call_prep.py`**:
-   - **Context**: Injects lead details, AI analysis, priority score, and chat history.
-   - **Rules**: Enforces exactly 3–4 discovery questions. Prohibits repeating questions for known details. Bans automatic financing/loan assumptions.
-
----
-
-## 8. Contextual Chat Architecture
-
-```
-Salesperson Question ──► POST /api/leads/{id}/chat
-                              │
-                              ▼
-                Retrieve Lead & Existing Chat History from chat_db[lead_id]
-                              │
-                              ▼
-                Build Grounded Prompt (lead_chat.py)
-                              │
-                              ▼
-                Call Gemini API ──► Receive Grounded Text Response
-                              │
-                              ▼
-                Append User & Assistant Messages to chat_db[lead_id]
-                              │
-                              ▼
-                Return ChatResponse JSON
-```
-
-- **Lead Isolation**: `chat_db` is a dictionary keyed by `lead_id` (`dict[str, list[ChatMessage]]`). This guarantees that Lead A's conversation cannot leak into Lead B.
-
----
-
-## 9. AI Call Prep Architecture
-
-```
-Click "Prepare Me for Call" ──► POST /api/leads/{id}/call-prep
-                                      │
-                                      ▼
-                        Check Lead & ai_analysis Exist (422 if missing)
-                                      │
-                                      ▼
-                        Build Call Prep Prompt (call_prep.py)
-                                      │
-                                      ▼
-                        Call Gemini API with CallPrep response_schema
-                                      │
-                                      ▼
-                        Return 7-Section CallPrep JSON
-```
-
----
-
-## 10. Data Model (Pydantic Schemas)
-
-1. `LeadCreate`: Incoming lead creation payload (*name, mobile_number, email, location, property_requirement, budget, buying_timeline, customer_message*).
-2. `LeadResponse`: Complete lead object including `id` UUID, timestamp, and nested `ai_analysis`.
-3. `LeadAnalysis`: Structured AI analysis model (*lead_summary, customer_intent, key_requirements, objections_concerns, recommended_next_action, suggested_response, priority_score, priority*).
-4. `ChatMessage`: Single chat entry (*role: "user"|"model", message, timestamp*).
-5. `ChatRequest` / `ChatResponse`: Endpoint payloads for contextual chat.
-6. `CallPrep`: 7-section structured preparation brief (*call_objective, key_talking_points, likely_objection, suggested_objection_handling, questions_to_ask, suggested_opening, desired_outcome*).
-
----
-
-## 11. API Architecture
-
-| Method | Endpoint | Router Module | Purpose | Status Codes |
-|---|---|---|---|---|
-| `GET` | `/` | `app/main.py` | Root status message | `200` |
-| `GET` | `/api/health` | `app/api/health.py` | Service health check | `200` |
-| `GET` | `/api/leads` | `app/api/leads.py` | Get all leads (priority sorted) | `200` |
-| `POST` | `/api/leads` | `app/api/leads.py` | Create lead & trigger AI analysis | `201`, `422`, `500` |
-| `GET` | `/api/leads/{id}` | `app/api/leads.py` | Fetch single lead by ID | `200`, `404` |
-| `POST` | `/api/leads/{id}/retry` | `app/api/leads.py` | Retry AI analysis for lead | `200`, `404`, `503` |
-| `GET` | `/api/leads/{id}/chat` | `app/api/chat.py` | Fetch lead chat history | `200`, `404` |
-| `POST` | `/api/leads/{id}/chat` | `app/api/chat.py` | Send message to contextual AI chat | `200`, `404`, `503` |
-| `POST` | `/api/leads/{id}/call-prep` | `app/api/call-prep.py` | Generate 7-section AI Call Prep | `200`, `404`, `422`, `503` |
-
----
-
-## 12. Error Handling & Resiliency
-
-- **Validation Errors (`HTTP 422`)**: Triggered automatically by Pydantic when required fields or field formats fail validation.
-- **Resource Not Found (`HTTP 404`)**: Returned when requesting an invalid `lead_id`.
-- **Precondition Failed (`HTTP 422`)**: Triggered by Call Prep service if attempting to generate prep for a lead without prior AI analysis (`MissingAnalysisError`).
-- **AI Service Unavailable (`HTTP 503`)**: Gracefully caught when Gemini API calls encounter timeouts or API issues. During lead creation, the lead is saved with `ai_analysis=None` so user data is never lost.
-
-### 12.1 Network Reconnection & 1-Click Retry (`POST /api/leads/{id}/retry`)
-- **Problem**: If network connectivity drops during lead intake, the lead is preserved with `ai_analysis = None`.
-- **Solution**: The backend exposes `POST /api/leads/{id}/retry`, and the frontend displays a 1-click **`🔄 Retry AI Analysis`** button on the lead detail view as soon as connectivity is restored.
-
----
-
-## 13. Security Considerations
-
-- **Zero Secret Exposure**: `GEMINI_API_KEY` is never included in client-side bundles or frontend requests.
-- **Strict Input Sanitization**: Mobile numbers and emails are validated via server-side regex.
-- **CORS Restricted**: Configured via `BACKEND_CORS_ORIGINS` to accept requests only from trusted frontend domains.
-
----
-
-## 14. Testing Architecture
-
-- **Unit Test Suite**: 47 automated backend unit tests in `backend/app/tests/`:
-  - `test_call_prep.py`: Tests CallPrep schema validation and `MissingAnalysisError` guard.
-  - `test_contact_info.py`: Tests mobile/email regex validation and backward compatibility.
-  - `test_lead_analysis_schema.py`: Tests priority score boundaries (0–100) and priority category literals (`HOT/WARM/COLD`).
-- **E2E Live Suite**: `test_e2e_live.py` executes an 11-step integration test against the running FastAPI server and real Gemini API.
-- **Frontend Build**: Verified type safety via `npm run build` (`tsc -b && vite build`).
-
----
-
-## 15. Planned Deployment Architecture
-
-```
-┌─────────────────────────┐               ┌─────────────────────────┐
-│     Vercel / Netlify    │               │  Render / Railway / HF  │
-│  Static React Frontend  │ ────────────► │     FastAPI Backend     │
-│   (VITE_API_BASE_URL)   │   HTTP/REST   │   (GEMINI_API_KEY env)  │
-└─────────────────────────┘               └────────────┬────────────┘
-                                                       │ HTTPS
-                                                       ▼
-                                          ┌─────────────────────────┐
-                                          │    Google Gemini API    │
-                                          └─────────────────────────┘
-```
-
----
-
-## 16. Architectural Trade-offs
-
-| Choice | Benefit | Trade-off / Mitigation |
+| Technology | Problem it solves | Trade-off |
 |---|---|---|
-| **In-Memory Storage** | Zero database dependency; fast setup | Data resets on backend restart; acceptable for assignment evaluation scope. |
-| **Server-Side LLM Orchestration** | Secures API keys and standardizes prompt formatting | Adds small HTTP hop latency between client and Gemini API. |
-| **Structured Output Schemas** | Guaranteed JSON structures for UI components | Strict validation fails if model produces malformed keys; mitigated by Pydantic validators. |
-| **Manual 1-Click Retry** | Instant user control without heavy message queue infra | Requires manual user click; mitigated by clear UI status indicator when offline. |
+| **FastAPI** | Removes validation boilerplate; integrates cleanly with async LLM calls | Async calls must be managed carefully to avoid blocking the event loop |
+| **React + TypeScript** | Prevents type mismatches between UI and API | Client-side rendering requires explicit loading and error states |
+| **Pydantic** | Guarantees LLM output matches the JSON keys the UI expects | Schema changes must be mirrored in TypeScript interfaces |
+| **Gemini (`google-genai`)** | Native structured JSON output removes fragile markdown/regex parsing | Requires internet access and valid API credentials |
 
 ---
 
-*Cross-references*:
-- Product & Business requirements: see [`PRD.md`](./PRD.md)
-- Implementation & Workflow specifications: see [`TASK.md`](./TASK.md)
+## 3. Backend Component Design
+
+```mermaid
+flowchart TB
+    FE["React 18 Frontend<br/>LeadsPage, LeadDetailsPage"]
+
+    subgraph API["FastAPI Application"]
+        direction TB
+        subgraph Routers["Routers"]
+            R1["Leads Router<br/>/api/leads"]
+            R2["Chat Router<br/>/api/leads/{id}/chat"]
+            R3["Call Prep Router<br/>/api/leads/{id}/call-prep"]
+        end
+        subgraph Svc["Services"]
+            LS[lead_service]
+            CS[chat_service]
+            CP[call_prep_service]
+        end
+        AI[ai_service]
+        PR["prompts/<br/>lead_analysis, lead_chat, call_prep"]
+    end
+
+    G["Google Gemini API"]
+
+    FE -->|HTTP REST| Routers
+    R1 --> LS
+    R2 --> CS
+    R3 --> CP
+    LS --> AI
+    CS --> AI
+    CP --> AI
+    AI --> PR
+    AI -->|"HTTPS, google-genai SDK"| G
+```
+
+| Module | Responsibility |
+|---|---|
+| `lead_service.py` | Create, store, retrieve, and sort leads; trigger analysis and retry |
+| `ai_service.py` | Single gateway to Gemini; builds requests with `response_schema` |
+| `chat_service.py` | Manage per-lead chat history and grounded Q&A |
+| `call_prep_service.py` | Enforce prerequisites and generate the call briefing |
+| `config.py` | Load settings (including `GEMINI_API_KEY`) via `pydantic-settings` |
+| `prompts/` | Prompt builders for analysis, chat, and call prep |
+
+---
+
+## 4. Workflows
+
+### 4.1 Lead creation and analysis
+
+```mermaid
+flowchart TD
+    A[User submits lead form] --> B[Frontend validation]
+    B --> C["POST /api/leads"]
+    C --> D[Pydantic schema validation]
+    D --> E["Save lead to memory (_leads)"]
+    E --> F["Call Gemini (ai_service)"]
+    F -->|Success| G[Attach LeadAnalysis to lead]
+    F -->|Exception or timeout| H["Keep lead with ai_analysis = None"]
+    G --> I["Return LeadResponse (HTTP 201)"]
+    H --> I
+```
+
+### 4.2 Contextual chat
+
+```mermaid
+flowchart TD
+    A[Salesperson asks a question] --> B["POST /api/leads/{id}/chat"]
+    B --> C["Load lead and _chat_history[lead_id]"]
+    C --> D["Build grounded prompt (lead_chat.py)"]
+    D --> E[Call Gemini]
+    E --> F["Append user and assistant messages to _chat_history[lead_id]"]
+    F --> G[Return ChatResponse]
+```
+
+Chat history is stored in a dictionary keyed by `lead_id` (`dict[str, list[ChatMessage]]`), so one lead's conversation is never included in another lead's prompt.
+
+### 4.3 AI Call Prep
+
+```mermaid
+flowchart TD
+    A["Prepare Me for Call"] --> B["POST /api/leads/{id}/call-prep"]
+    B --> C{"Lead exists and has ai_analysis?"}
+    C -->|No| X["422 MissingAnalysisError / 404"]
+    C -->|Yes| D["Build prompt (call_prep.py)"]
+    D --> E["Call Gemini with CallPrep response_schema"]
+    E --> F[Return 7-section CallPrep JSON]
+```
+
+### 4.4 Retry after network failure
+
+```mermaid
+flowchart TD
+    A["Lead detail view loads"] --> B{"ai_analysis is null?"}
+    B -->|No| C[Show analysis]
+    B -->|Yes| D["Show Retry AI Analysis banner"]
+    D --> E["POST /api/leads/{id}/retry"]
+    E -->|Success| C
+    E -->|"Failure (503)"| D
+```
+
+---
+
+## 5. AI Architecture
+
+### 5.1 Request pattern
+
+```mermaid
+flowchart LR
+    A["FastAPI service"] -->|"Prompt + response_schema"| B["Gemini API"]
+    B -->|"Structured JSON"| C["Pydantic model"]
+    C --> D["Typed response to frontend"]
+```
+
+All calls use `response_mime_type="application/json"` with a Pydantic `response_schema` (`LeadAnalysis` or `CallPrep`). Chat returns grounded text.
+
+### 5.2 Prompt builders (`backend/app/prompts/`)
+
+| Builder | Context injected | Key rules | Output |
+|---|---|---|---|
+| `lead_analysis.py` | Name, mobile, email, location, requirement, budget, timeline, message | Distinguish customer objections from missing information; ban unsupported market claims | Six analysis sections, priority score (0–100), category (`HOT`/`WARM`/`COLD`) |
+| `lead_chat.py` | Full lead details, AI analysis, chat history | Strict grounding; when a detail is missing, state that it is not available in the lead details instead of inventing it | Grounded text reply |
+| `call_prep.py` | Lead details, AI analysis, priority score, chat history | Exactly 3–4 discovery questions; do not re-ask known details; never assume financing or a home loan | Seven-section `CallPrep` |
+
+### 5.3 Priority scoring
+
+| Category | Score range |
+|---|---|
+| `HOT` | 80–100 |
+| `WARM` | 50–79 |
+| `COLD` | 0–49 |
+
+The score reflects budget clarity, timeline urgency, and requirement specificity. `GET /api/leads` returns leads sorted by `priority_score` in descending order.
+
+---
+
+## 6. Data Model
+
+| Schema | Purpose | Fields |
+|---|---|---|
+| `LeadCreate` | Incoming lead payload | `name`, `mobile_number`, `email`, `location`, `property_requirement`, `budget`, `buying_timeline`, `customer_message` |
+| `LeadResponse` | Stored lead returned to clients | All `LeadCreate` fields plus `id` (UUID), timestamp, nested `ai_analysis` |
+| `LeadAnalysis` | Structured AI analysis | `lead_summary`, `customer_intent`, `key_requirements`, `objections_concerns`, `recommended_next_action`, `suggested_response`, `priority_score`, `priority` |
+| `ChatMessage` | Single chat entry | `role` (`"user"` or `"model"`), `message`, `timestamp` |
+| `ChatRequest` / `ChatResponse` | Chat endpoint payloads | Message in; assistant reply and history out |
+| `CallPrep` | Call briefing | `call_objective`, `key_talking_points`, `likely_objection`, `suggested_objection_handling`, `questions_to_ask`, `suggested_opening`, `desired_outcome` |
+
+---
+
+## 7. API Reference
+
+| Method | Endpoint | Module | Purpose | Status codes |
+|---|---|---|---|---|
+| `GET` | `/` | `app/main.py` | Root status message | 200 |
+| `GET` | `/api/health` | `app/api/health.py` | Health check | 200 |
+| `GET` | `/api/leads` | `app/api/leads.py` | List leads, priority sorted | 200 |
+| `POST` | `/api/leads` | `app/api/leads.py` | Create lead and trigger analysis | 201, 422, 500 |
+| `GET` | `/api/leads/{id}` | `app/api/leads.py` | Fetch a single lead | 200, 404 |
+| `POST` | `/api/leads/{id}/retry` | `app/api/leads.py` | Retry AI analysis | 200, 404, 503 |
+| `GET` | `/api/leads/{id}/chat` | `app/api/chat.py` | Fetch chat history | 200, 404 |
+| `POST` | `/api/leads/{id}/chat` | `app/api/chat.py` | Send a message to the lead-scoped assistant | 200, 404, 503 |
+| `POST` | `/api/leads/{id}/call-prep` | `app/api/call_prep.py` | Generate the 7-section briefing | 200, 404, 422, 503 |
+
+Interactive documentation is served at `/docs` (OpenAPI).
+
+---
+
+## 8. Error Handling and Resilience
+
+| Condition | Status | Behavior |
+|---|---|---|
+| Invalid or missing fields | 422 | Raised automatically by Pydantic validation |
+| Unknown `lead_id` | 404 | Returned by lead lookups |
+| Call prep without prior analysis | 422 | `MissingAnalysisError` raised by the call prep service |
+| Gemini timeout or API failure | 503 | Caught and reported; on lead creation the lead is saved with `ai_analysis = None` |
+
+### Network interruption and one-click retry
+
+If connectivity drops during intake, the lead is preserved and returned with `201 Created` and no analysis. The lead detail view detects `ai_analysis === null` and shows a **Retry AI Analysis** control that calls `POST /api/leads/{id}/retry` once connectivity returns. This avoids queue infrastructure (Redis, Celery) while ensuring lead data is never lost.
+
+---
+
+## 9. Security
+
+- **Secret isolation:** `GEMINI_API_KEY` is loaded only in `backend/app/config.py` and is never included in API responses, client bundles, or frontend requests.
+- **Input validation:** mobile numbers (10–12 digits) and email addresses are validated server-side with regex-backed Pydantic fields.
+- **CORS:** `BACKEND_CORS_ORIGINS` restricts browser access to trusted frontend origins.
+- **Context isolation:** AI prompts only ever include the data of the lead being processed.
+
+---
+
+## 10. Testing Strategy
+
+| Level | Scope | Location |
+|---|---|---|
+| Unit | 47 automated backend tests | `backend/app/tests/` |
+| Schema | `test_call_prep.py` (CallPrep validation, `MissingAnalysisError` guard); `test_contact_info.py` (phone and email validation, backward compatibility); `test_lead_analysis_schema.py` (score bounds, priority literals) | `backend/app/tests/` |
+| Live integration | 11-step end-to-end run against the running server and the real Gemini API | `test_e2e_live.py` |
+| Frontend build | Type check and bundle with `tsc -b && vite build` | `frontend/` |
+
+---
+
+## 11. Deployment Architecture
+
+Planned deployment separates the static frontend from the API service.
+
+```mermaid
+flowchart LR
+    A["Vercel / Netlify<br/>Static React frontend<br/>VITE_API_BASE_URL"] -->|"HTTP / REST"| B["Render / Railway / Hugging Face<br/>FastAPI backend<br/>GEMINI_API_KEY"]
+    B -->|HTTPS| C["Google Gemini API"]
+```
+
+---
+
+## 12. Design Trade-offs
+
+| Decision | Benefit | Trade-off and mitigation |
+|---|---|---|
+| In-memory storage | No database dependency; simple setup; O(1) lookups by UUID | Data resets on restart; planned persistent storage (see Roadmap in the README) |
+| Server-side LLM orchestration | Protects API keys and standardizes prompts | One extra network hop between client and Gemini |
+| Structured output schemas | Guaranteed JSON shape for UI components | Malformed model output fails validation; handled by Pydantic and error responses |
+| Manual one-click retry | User control without queue infrastructure | Requires a user action; mitigated by a clear status banner |
