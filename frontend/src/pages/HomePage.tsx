@@ -32,9 +32,9 @@ export default function HomePage() {
             <span className="text-base font-bold tracking-tight text-text">LeadPilot AI</span>
           </div>
 
-          {/* Phase badge */}
-          <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-text-muted">
-            Phase 1 · Foundation
+          {/* Status badge */}
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+            Real Estate Sales Assistant
           </span>
         </div>
       </header>
@@ -44,22 +44,22 @@ export default function HomePage() {
         <div className="mx-auto max-w-2xl text-center">
           {/* AI badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            <span className="text-xs font-medium text-accent">AI-Powered Workflow</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-600" />
+            <span className="text-xs font-bold text-violet-700">AI-Powered Workflow</span>
           </div>
 
           {/* Headline */}
-          <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight text-text sm:text-5xl">
-            LeadPilot <span className="text-primary">AI</span>
+          <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl">
+            LeadPilot <span className="text-blue-600">AI</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="mb-3 text-lg font-medium text-text-secondary">
+          <p className="mb-3 text-lg font-bold text-slate-800">
             AI-Powered Lead Prioritization for Real Estate
           </p>
 
           {/* Value proposition */}
-          <p className="text-base text-text-muted">
+          <p className="text-base font-medium text-slate-600">
             Turn inbound real-estate leads into clear, actionable sales opportunities — so
             you always call the right person at the right time.
           </p>
@@ -70,10 +70,10 @@ export default function HomePage() {
           <BackendStatus />
         </div>
 
-        {/* ── Roadmap info ─────────────────────────────────── */}
-        <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-border bg-surface p-8">
-          <h2 className="mb-6 text-sm font-semibold uppercase tracking-widest text-text-muted">
-            What's coming
+        {/* ── Capabilities info ─────────────────────────────────── */}
+        <div className="mx-auto mt-16 max-w-2xl rounded-xl border border-slate-200 bg-slate-50 p-8">
+          <h2 className="mb-6 text-xs font-bold uppercase tracking-widest text-slate-700">
+            Core Capabilities
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
@@ -92,10 +92,10 @@ export default function HomePage() {
             ].map((item) => (
               <div
                 key={item.title}
-                className="rounded-lg border border-border bg-white p-4"
+                className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <p className="mb-1 text-sm font-semibold text-text">{item.title}</p>
-                <p className="text-xs leading-relaxed text-text-muted">{item.desc}</p>
+                <p className="mb-1 text-sm font-bold text-slate-900">{item.title}</p>
+                <p className="text-xs leading-relaxed font-medium text-slate-600">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -103,9 +103,9 @@ export default function HomePage() {
       </main>
 
       {/* ── Footer ───────────────────────────────────────── */}
-      <footer className="border-t border-border py-6">
-        <p className="text-center text-xs text-text-muted">
-          LeadPilot AI · Phase 1 Foundation · Built with FastAPI + React
+      <footer className="border-t border-slate-200 py-6">
+        <p className="text-center text-xs font-medium text-slate-600">
+          LeadPilot AI · AI-powered real-estate sales assistant
         </p>
       </footer>
     </div>

@@ -105,6 +105,20 @@ export default function LeadForm() {
   const [createdLead, setCreatedLead] = useState<Lead | null>(null)
   const [apiError, setApiError] = useState<string>('')
 
+  function handleAutofillSample() {
+    setForm({
+      name: 'Priya Sharma',
+      mobileNumber: '9876543210',
+      email: 'priya.sharma@example.com',
+      location: 'Bandra West, Mumbai',
+      propertyRequirement: '3 BHK Luxury Apartment',
+      budget: '3.5 Crores',
+      buyingTimeline: 'Within 1 month',
+      customerMessage: 'Looking for a ready-to-move 3 BHK near Carter Road. Have pre-approved home loan and want to schedule site visits this weekend.',
+    })
+    setErrors({})
+  }
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) {
@@ -147,34 +161,52 @@ export default function LeadForm() {
 
   return (
     <div>
-      <div className="rounded-xl border border-border bg-white p-8 shadow-sm">
-        <h2 className="mb-1 text-lg font-semibold text-text">Add New Lead</h2>
-        <p className="mb-8 text-sm text-text-muted">Fill in contact, requirement, and enquiry details.</p>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+        {/* Card Header with Auto-fill Sample */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-5 mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Add New Lead</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              Fill in contact, property requirements, and customer enquiry notes for AI scoring.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAutofillSample}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-bold text-violet-800 hover:bg-violet-100 transition-colors shadow-sm self-start sm:self-auto"
+          >
+            <span>✨ Auto-fill Sample Lead</span>
+          </button>
+        </div>
 
         {/* ── Full success ──────────────────────────────────────── */}
         {submitState === 'success' && createdLead && (
-          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <p className="text-sm font-medium text-emerald-800">Lead analysed successfully.</p>
-            <p className="mt-0.5 font-mono text-xs text-emerald-600">ID: {createdLead.id}</p>
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50/90 px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-emerald-900">Lead added & analyzed successfully!</p>
+              <p className="mt-0.5 font-mono text-xs text-emerald-700 font-semibold">ID: {createdLead.id}</p>
+            </div>
             <button
               onClick={() => navigate(`/leads/${createdLead.id}`)}
-              className="mt-2 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors"
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors shadow-sm"
             >
-              View Lead →
+              View Lead Details →
             </button>
           </div>
         )}
 
         {/* ── Partial success ───────────────────────────────────── */}
         {submitState === 'partial' && createdLead && (
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-sm font-medium text-amber-800">
-              Lead saved, but AI analysis is currently unavailable.
-            </p>
-            <p className="mt-0.5 font-mono text-xs text-amber-600">ID: {createdLead.id}</p>
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-amber-900">
+                Lead saved, but AI analysis is currently unavailable.
+              </p>
+              <p className="mt-0.5 font-mono text-xs text-amber-700 font-semibold">ID: {createdLead.id}</p>
+            </div>
             <button
               onClick={() => navigate(`/leads/${createdLead.id}`)}
-              className="mt-2 rounded-lg bg-amber-700 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-800 transition-colors"
+              className="rounded-lg bg-amber-700 px-4 py-2 text-xs font-bold text-white hover:bg-amber-800 transition-colors shadow-sm"
             >
               View Lead →
             </button>
@@ -183,21 +215,21 @@ export default function LeadForm() {
 
         {/* ── Error ─────────────────────────────────────────────── */}
         {submitState === 'error' && apiError && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-sm font-medium text-red-800">{apiError}</p>
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+            <p className="text-sm font-bold text-red-800">{apiError}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-8">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* ── Section 1: Contact Information ───────────────── */}
           <div className="space-y-4">
-            <div className="border-b border-border pb-2">
-              <h3 className="text-xs font-bold tracking-wider text-text-muted uppercase">
+            <div className="border-b border-slate-200 pb-2">
+              <h3 className="text-xs font-extrabold tracking-wider text-slate-700 uppercase">
                 Contact Information
               </h3>
             </div>
 
-            <Field id="name" label="Name" error={errors.name}>
+            <Field id="name" label="Customer Name" error={errors.name}>
               <input
                 id="name"
                 name="name"
@@ -241,18 +273,18 @@ export default function LeadForm() {
 
           {/* ── Section 2: Property Requirements ─────────────── */}
           <div className="space-y-4">
-            <div className="border-b border-border pb-2">
-              <h3 className="text-xs font-bold tracking-wider text-text-muted uppercase">
+            <div className="border-b border-slate-200 pb-2">
+              <h3 className="text-xs font-extrabold tracking-wider text-slate-700 uppercase">
                 Property Requirements
               </h3>
             </div>
 
-            <Field id="location" label="Location" error={errors.location}>
+            <Field id="location" label="Location Preference" error={errors.location}>
               <input
                 id="location"
                 name="location"
                 type="text"
-                placeholder="e.g. Mumbai"
+                placeholder="e.g. Bandra West, Mumbai"
                 value={form.location}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -269,7 +301,7 @@ export default function LeadForm() {
                 id="propertyRequirement"
                 name="propertyRequirement"
                 type="text"
-                placeholder="e.g. 3 BHK"
+                placeholder="e.g. 3 BHK Luxury Apartment"
                 value={form.propertyRequirement}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -283,7 +315,7 @@ export default function LeadForm() {
                   id="budget"
                   name="budget"
                   type="text"
-                  placeholder="e.g. 1.5 crores"
+                  placeholder="e.g. 1.5 - 2 Crores"
                   value={form.budget}
                   onChange={handleChange}
                   disabled={isLoading}
@@ -313,18 +345,18 @@ export default function LeadForm() {
 
           {/* ── Section 3: Customer Message ──────────────────── */}
           <div className="space-y-4">
-            <div className="border-b border-border pb-2">
-              <h3 className="text-xs font-bold tracking-wider text-text-muted uppercase">
-                Customer Message
+            <div className="border-b border-slate-200 pb-2">
+              <h3 className="text-xs font-extrabold tracking-wider text-slate-700 uppercase">
+                Customer Message & Notes
               </h3>
             </div>
 
-            <Field id="customerMessage" label="Customer Message" error={errors.customerMessage}>
+            <Field id="customerMessage" label="Customer Inquiry Message" error={errors.customerMessage}>
               <textarea
                 id="customerMessage"
                 name="customerMessage"
                 rows={4}
-                placeholder="What did the customer say? Include any specific requirements or enquiry notes."
+                placeholder="Paste customer enquiry or write message summary (e.g. 'Looking for 3 BHK in Bandra, budget 3.5Cr, pre-approved loan')."
                 value={form.customerMessage}
                 onChange={handleChange}
                 disabled={isLoading}
@@ -336,16 +368,32 @@ export default function LeadForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="mt-2 w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 transition-all disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
-            {isLoading ? 'Analysing lead with AI…' : 'Add Lead'}
+            {isLoading ? (
+              <>
+                <svg className="h-4 w-4 animate-spin text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Analyzing lead with AI…
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+                Create Lead & Run AI Analysis
+              </>
+            )}
           </button>
         </form>
       </div>
 
       {/* AI analysis preview below a successful submission */}
       {submitState === 'success' && createdLead?.aiAnalysis && (
-        <LeadAnalysisCard analysis={createdLead.aiAnalysis} />
+        <div className="mt-8">
+          <LeadAnalysisCard analysis={createdLead.aiAnalysis} />
+        </div>
       )}
     </div>
   )
@@ -368,12 +416,12 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-text">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-bold text-slate-900">
         {label}
       </label>
       {children}
       {error && (
-        <p className="mt-1.5 text-xs text-red-600" role="alert">
+        <p className="mt-1.5 text-xs font-bold text-red-600" role="alert">
           {error}
         </p>
       )}
@@ -383,11 +431,11 @@ function Field({
 
 function inputClass(hasError: boolean): string {
   return [
-    'w-full rounded-lg border px-3 py-2.5 text-sm text-text',
-    'placeholder:text-text-muted',
-    'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
-    'disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-muted',
+    'w-full rounded-lg border px-3.5 py-2.5 text-sm font-semibold text-slate-900',
+    'placeholder:text-slate-400 placeholder:font-normal',
+    'focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:ring-offset-1',
+    'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400',
     'transition-colors bg-white',
-    hasError ? 'border-red-400' : 'border-border hover:border-primary/50',
+    hasError ? 'border-red-400' : 'border-slate-300 hover:border-slate-400',
   ].join(' ')
 }

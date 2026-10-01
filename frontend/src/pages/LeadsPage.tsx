@@ -111,19 +111,19 @@ export default function LeadsPage() {
     <div className="min-h-screen bg-surface">
       <AppHeader />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-10">
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-8">
         {/* ── Page heading ────────────────────────────────────── */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-text">Leads</h1>
-            <p className="mt-0.5 text-sm text-text-muted">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Leads</h1>
+            <p className="mt-0.5 text-sm font-medium text-slate-600">
               Manage, search, and review your prioritized real-estate leads.
             </p>
           </div>
 
           <Link
             to="/add-lead"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
           >
             + Add Lead
           </Link>
@@ -136,16 +136,19 @@ export default function LeadsPage() {
             <button
               type="button"
               onClick={() => setPriorityFilter('ALL')}
-              className={`flex flex-col justify-between rounded-xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-primary ${
+              className={`flex flex-col justify-between rounded-xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
                 priorityFilter === 'ALL'
-                  ? 'border-primary bg-blue-50/70 shadow-sm ring-1 ring-primary'
-                  : 'border-border bg-white hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-blue-600 bg-blue-50/80 shadow-sm ring-1 ring-blue-600'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                All Leads
-              </span>
-              <span className="mt-2 text-2xl font-bold text-text">{totalCount}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  ALL LEADS
+                </span>
+                <span className="h-2 w-2 rounded-full bg-blue-600" />
+              </div>
+              <span className="mt-2 text-2xl font-extrabold text-slate-900">{totalCount}</span>
             </button>
 
             {/* Card 2: HOT */}
@@ -154,14 +157,17 @@ export default function LeadsPage() {
               onClick={() => setPriorityFilter('HOT')}
               className={`flex flex-col justify-between rounded-xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-red-400 ${
                 priorityFilter === 'HOT'
-                  ? 'border-red-300 bg-red-50/70 shadow-sm ring-1 ring-red-400'
-                  : 'border-border bg-white hover:border-red-200 hover:bg-red-50/40'
+                  ? 'border-red-400 bg-red-50 shadow-sm ring-1 ring-red-400'
+                  : 'border-slate-200 bg-white hover:border-red-200 hover:bg-red-50/40'
               }`}
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-red-700">
-                HOT
-              </span>
-              <span className="mt-2 text-2xl font-bold text-red-700">{hotCount}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-red-700">
+                  HOT
+                </span>
+                <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+              </div>
+              <span className="mt-2 text-2xl font-extrabold text-red-700">{hotCount}</span>
             </button>
 
             {/* Card 3: WARM */}
@@ -170,14 +176,17 @@ export default function LeadsPage() {
               onClick={() => setPriorityFilter('WARM')}
               className={`flex flex-col justify-between rounded-xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 ${
                 priorityFilter === 'WARM'
-                  ? 'border-amber-300 bg-amber-50/70 shadow-sm ring-1 ring-amber-400'
-                  : 'border-border bg-white hover:border-amber-200 hover:bg-amber-50/40'
+                  ? 'border-amber-400 bg-amber-50 shadow-sm ring-1 ring-amber-400'
+                  : 'border-slate-200 bg-white hover:border-amber-200 hover:bg-amber-50/40'
               }`}
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-                WARM
-              </span>
-              <span className="mt-2 text-2xl font-bold text-amber-700">{warmCount}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                  WARM
+                </span>
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+              </div>
+              <span className="mt-2 text-2xl font-extrabold text-amber-700">{warmCount}</span>
             </button>
 
             {/* Card 4: COLD */}
@@ -187,13 +196,16 @@ export default function LeadsPage() {
               className={`flex flex-col justify-between rounded-xl border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-slate-400 ${
                 priorityFilter === 'COLD'
                   ? 'border-slate-400 bg-slate-100 shadow-sm ring-1 ring-slate-400'
-                  : 'border-border bg-white hover:border-slate-300 hover:bg-slate-50'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                COLD
-              </span>
-              <span className="mt-2 text-2xl font-bold text-slate-700">{coldCount}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  COLD
+                </span>
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+              </div>
+              <span className="mt-2 text-2xl font-extrabold text-slate-800">{coldCount}</span>
             </button>
           </div>
         )}
@@ -203,7 +215,7 @@ export default function LeadsPage() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search Input */}
             <div className="relative flex-1">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z" />
                 </svg>
@@ -214,14 +226,14 @@ export default function LeadsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search leads by name, location, requirements..."
                 aria-label="Search leads"
-                className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-4 text-sm text-text placeholder-text-muted transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-slate-900 placeholder-slate-500 transition-colors focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search input"
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-text-muted hover:text-text"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs font-bold text-slate-500 hover:text-slate-900"
                 >
                   ✕
                 </button>
@@ -234,7 +246,7 @@ export default function LeadsPage() {
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value as PriorityFilter)}
                 aria-label="Filter by priority"
-                className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-text transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition-colors focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
               >
                 <option value="ALL">All priorities</option>
                 <option value="HOT">HOT priority</option>
@@ -247,7 +259,7 @@ export default function LeadsPage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 aria-label="Sort leads"
-                className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-text transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition-colors focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
               >
                 <option value="score_desc">AI Score: High → Low</option>
                 <option value="score_asc">AI Score: Low → High</option>
@@ -261,15 +273,15 @@ export default function LeadsPage() {
         {/* ── Dynamic Result Count & Reset ──────────────────────── */}
         {loadState === 'success' && leads.length > 0 && (
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-medium text-text-muted">
+            <p className="text-xs font-semibold text-slate-700">
               {isFilteredOrSearched ? (
                 <span>
-                  Showing <strong className="text-text">{displayedLeads.length}</strong> of{' '}
-                  <strong className="text-text">{totalCount}</strong> leads
+                  Showing <strong className="font-extrabold text-slate-900">{displayedLeads.length}</strong> of{' '}
+                  <strong className="font-extrabold text-slate-900">{totalCount}</strong> leads
                 </span>
               ) : (
                 <span>
-                  <strong className="text-text">{totalCount}</strong> {totalCount === 1 ? 'lead' : 'leads'} total
+                  <strong className="font-extrabold text-slate-900">{totalCount}</strong> {totalCount === 1 ? 'lead' : 'leads'} total
                 </span>
               )}
             </p>
@@ -278,7 +290,7 @@ export default function LeadsPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="text-xs font-semibold text-primary hover:text-primary-dark hover:underline"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
               >
                 Clear Filters
               </button>
