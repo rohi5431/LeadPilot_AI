@@ -17,6 +17,8 @@ Turn raw inbound enquiries into structured sales intelligence, priority scores, 
 
 [Live Demo](https://leadpilot-frontend1.onrender.com) · [GitHub Repository](https://github.com/rohi5431/LeadPilot_AI/tree/main) · [API Docs](https://leadpilot-backend-g0jh.onrender.com/docs)
 
+- **Demo Video:** [Google Drive Demo Video](YOUR_GOOGLE_DRIVE_LINK)
+  
 </div>
 
 ---
