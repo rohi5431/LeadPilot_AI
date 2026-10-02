@@ -310,6 +310,50 @@ npm run build
 - **Call Prep prerequisite:** a lead must already have AI analysis (`ai_analysis !== null`) before a briefing can be generated.
 
 ---
+### 8. AI Multi-Channel Outreach Studio
+
+LeadPilot also provides an AI-powered outreach generation feature that converts
+lead context and existing AI analysis into personalized communication content.
+
+The feature is intentionally **generation-only**. It does not send WhatsApp
+messages, emails, or make calls. The salesperson reviews the generated content
+and can copy it for manual use.
+
+#### Supported Outreach Formats
+
+1. **WhatsApp Message**
+   - Generates a concise, personalized WhatsApp message.
+   - Uses the lead's requirements, budget, timeline, and concerns.
+
+2. **Email**
+   - Generates a personalized email subject and body.
+   - Tailored to the specific lead context.
+
+3. **Call Opening Script**
+   - Generates a natural opening script for the salesperson's call.
+   - Helps the salesperson start the conversation with relevant context.
+
+4. **Follow-up Message**
+   - Generates a follow-up message based on the lead's current context
+     and recommended next action.
+
+#### Outreach Workflow
+
+```text
+Lead Context
+     ↓
+Existing AI Analysis
+     ↓
+AI Multi-Channel Outreach Studio
+     ↓
+┌─────────────────┬─────────────────┬──────────────────┐
+│ WhatsApp        │ Email           │ Call Opening     │
+│ Message         │ Subject + Body  │ Script           │
+└─────────────────┴─────────────────┴──────────────────┘
+     ↓
+Salesperson Reviews
+     ↓
+Copy & Use Manually
 
 ## 12. Future Improvement
 
