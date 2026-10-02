@@ -381,23 +381,6 @@ export default function LeadDetailsPage() {
                   </div>
                 )}
               </div>
-
-              {/* Next Action Highlight in Sidebar */}
-              {lead.aiAnalysis?.recommendedNextAction && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/90 p-5 shadow-sm">
-                  <div className="mb-2 flex items-center gap-1.5">
-                    <svg className="h-4 w-4 text-blue-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                    </svg>
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-blue-800">
-                      Recommended Next Step
-                    </span>
-                  </div>
-                  <p className="text-sm font-bold leading-relaxed text-slate-900">
-                    {lead.aiAnalysis.recommendedNextAction}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createLead } from '../services/api'
 import type { LeadCreate, Lead } from '../types/lead'
-import LeadAnalysisCard from './LeadAnalysisCard'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -388,13 +387,6 @@ export default function LeadForm() {
           </button>
         </form>
       </div>
-
-      {/* AI analysis preview below a successful submission */}
-      {submitState === 'success' && createdLead?.aiAnalysis && (
-        <div className="mt-8">
-          <LeadAnalysisCard analysis={createdLead.aiAnalysis} />
-        </div>
-      )}
     </div>
   )
 }
