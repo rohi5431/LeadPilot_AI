@@ -2,6 +2,7 @@ import type { HealthResponse } from '../types/api'
 import type { LeadCreate, Lead, LeadAnalysis } from '../types/lead'
 import type { ChatMessage, ChatHistoryResponse, ChatResponse } from '../types/chat'
 import type { CallPrep } from '../types/callPrep'
+import type { OutreachResponse, OutreachTone } from '../types/outreach'
 
 /**
  * Base URL is read from the Vite environment variable.
@@ -198,4 +199,41 @@ export async function generateCallPrep(leadId: string): Promise<CallPrep> {
     desiredOutcome: raw.desired_outcome as string,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Outreach Studio — Signature Feature
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/leads/{leadId}/outreach
+ * Generates tailored multi-channel outreach copy (WhatsApp, Email, SMS, Strategy Note).
+ */
+export async function generateOutreach(
+  leadId: string,
+  tone: OutreachTone = 'consultative',
+): Promise<OutreachResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/leads/${leadId}/outreach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tone }),
+  })
+
+  if (response.status === 404) throw new Error('Lead not found')
+
+  if (response.status === 422) {
+    const errorData = await response.json().catch(() => ({})) as { detail?: string }
+    throw new Error(errorData.detail || 'AI analysis is required before generating outreach copy.')
+  }
+
+  if (response.status === 503) {
+    throw new Error('AI outreach generation is temporarily unavailable. Please try again.')
+  }
+
+  if (!response.ok) {
+    throw new Error(`Outreach request failed (HTTP ${response.status})`)
+  }
+
+  return response.json() as Promise<OutreachResponse>
+}
+
 

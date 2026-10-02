@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api import health, leads, chat, call_prep
+from app.api import health, leads, chat, call_prep, outreach
 
 app = FastAPI(title="LeadPilot AI API")
 
@@ -24,6 +24,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(leads.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(call_prep.router, prefix="/api")
+app.include_router(outreach.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------

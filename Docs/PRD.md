@@ -148,6 +148,7 @@ The lead list is sorted by score, descending.
 
 ---
 
+<<<<<<< HEAD
 ## 7. Custom Feature: AI Call Prep
 
 **Problem:** representatives lose time assembling talking points and anticipating objections before each call.
@@ -163,6 +164,27 @@ The lead list is sorted by score, descending.
 | 5 | Questions to Ask | Exactly 3–4 natural discovery questions for missing information |
 | 6 | Suggested Opening | Professional, conversational opening line |
 | 7 | Desired Outcome | Specific target result by the end of the call |
+=======
+## 7. Custom Signature Features
+
+### 7.1 AI Call Prep
+- **Problem**: Sales representatives lose productivity assembling talking points and anticipating objections prior to calling a buyer.
+- **Solution**: A 1-click **"Prepare Me for Call"** feature generating a structured 7-section call brief grounded in lead details, past AI analysis, priority score, and chat history.
+
+#### The 7 Call Prep Sections:
+1. **Call Objective**: Single-sentence goal for the phone call.
+2. **Key Talking Points**: 3–6 concise points referencing actual lead requirements.
+3. **Likely Objection**: Most probable customer concern grounded in the enquiry.
+4. **Suggested Objection Handling**: Clear strategy to handle the objection.
+5. **Questions to Ask**: Exactly 3–4 natural-language discovery questions targeting missing info.
+6. **Suggested Opening**: Professional conversational opening line.
+7. **Desired Outcome**: Specific targeted outcome by the end of the call.
+>>>>>>> 5a378ed (Add AI multi-channel outreach studio)
+
+### 7.2 AI Multi-Channel Outreach Studio
+- **Problem**: After reviewing lead insights, sales representatives waste time manually drafting outreach text for WhatsApp, Email, or SMS across different customer personas.
+- **Solution**: A dedicated **AI Outreach Studio** that instantly generates customized messaging across 4 channels (**WhatsApp**, **Email**, **SMS**, **Strategy Notes**) with 4 dynamic tone options (*Consultative*, *High Urgency*, *Friendly & Warm*, *Executive*).
+- **Protocol Action Triggers**: Includes 1-click **Send via WhatsApp** (`api.whatsapp.com` / `wa.me`), **Open Email Client** (`mailto:`), **Send SMS** (`sms:`), and **Copy to Clipboard**.
 
 ---
 

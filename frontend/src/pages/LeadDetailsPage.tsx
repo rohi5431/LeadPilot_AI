@@ -8,6 +8,7 @@ import LeadAnalysisCard from '../components/LeadAnalysisCard'
 import LeadChat from '../components/LeadChat'
 import CallPrepCard from '../components/CallPrepCard'
 import CircularScore from '../components/CircularScore'
+import OutreachStudioCard from '../components/OutreachStudioCard'
 
 type LoadState = 'loading' | 'success' | 'not_found' | 'error'
 
@@ -261,7 +262,10 @@ export default function LeadDetailsPage() {
                 </div>
               )}
 
-              {/* ── 3. Contextual AI Assistant Chat Widget ──────── */}
+              {/* ── 3. AI Outreach Studio (Multi-Channel Copy Generator) ── */}
+              <OutreachStudioCard lead={lead} />
+
+              {/* ── 4. Contextual AI Assistant Chat Widget ──────── */}
               <LeadChat leadId={lead.id} />
             </div>
 
