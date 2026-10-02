@@ -15,7 +15,7 @@ Turn raw inbound enquiries into structured sales intelligence, priority scores, 
 ![Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat&logo=googlegemini&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-47_passing-brightgreen?style=flat)
 
-[Live Demo](https://leadpilot-frontend1.onrender.com/add-lead) · [GitHub Repository](https://github.com/rohi5431/LeadPilot_AI/tree/main) · [API Docs](https://leadpilot-backend-g0jh.onrender.com/docs)
+[Live Demo](https://leadpilot-frontend1.onrender.com) · [GitHub Repository](https://github.com/rohi5431/LeadPilot_AI/tree/main) · [API Docs](https://leadpilot-backend-g0jh.onrender.com/docs)
 
 </div>
 
