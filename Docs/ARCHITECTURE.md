@@ -1,6 +1,6 @@
-# LeadPilot AI: System Architecture and Workflow
+# LeadPilot AI: System Architecture
 
-This document describes how LeadPilot AI is structured, how data moves through it, and how its AI components are designed. For setup instructions see the [README](./README.md); for requirements see [`PRD.md`](./PRD.md) and [`TASK.md`](./TASK.md).
+This document describes how LeadPilot AI is built: components, data flow, AI design, data contracts, and deployment. For product scope and requirements see [`PRD.md`](./PRD.md); for implementation tasks and testing see [`TASK.md`](./TASK.md); for setup see the [README](./README.md).
 
 ## Table of Contents
 
@@ -13,9 +13,8 @@ This document describes how LeadPilot AI is structured, how data moves through i
 7. [API Reference](#7-api-reference)
 8. [Error Handling and Resilience](#8-error-handling-and-resilience)
 9. [Security](#9-security)
-10. [Testing Strategy](#10-testing-strategy)
-11. [Deployment Architecture](#11-deployment-architecture)
-12. [Design Trade-offs](#12-design-trade-offs)
+10. [Deployment Architecture](#10-deployment-architecture)
+11. [Design Trade-offs](#11-design-trade-offs)
 
 ---
 
@@ -71,7 +70,7 @@ flowchart TB
 | Validation | Pydantic | 2.8.2 | Request validation and Gemini `response_schema` definitions |
 | ASGI server | Uvicorn | 0.30.6 | Hosts the FastAPI application |
 | AI SDK | `google-genai` | 1.5.0 | Official Gemini SDK with structured output support |
-| Testing | pytest | 7.4.4 | Backend unit and integration tests (47 passing) |
+| Testing | pytest | 7.4.4 | Backend unit and integration tests |
 
 ### Rationale and trade-offs
 
@@ -125,7 +124,7 @@ flowchart TB
 | `ai_service.py` | Single gateway to Gemini; builds requests with `response_schema` |
 | `chat_service.py` | Manage per-lead chat history and grounded Q&A |
 | `call_prep_service.py` | Enforce prerequisites and generate the call briefing |
-| `config.py` | Load settings (including `GEMINI_API_KEY`) via `pydantic-settings` |
+| `config.py` | Load settings (`GEMINI_API_KEY`, `GEMINI_MODEL`, `BACKEND_CORS_ORIGINS`) via `pydantic-settings` |
 | `prompts/` | Prompt builders for analysis, chat, and call prep |
 
 ---
@@ -198,25 +197,19 @@ flowchart LR
     C --> D["Typed response to frontend"]
 ```
 
-All calls use `response_mime_type="application/json"` with a Pydantic `response_schema` (`LeadAnalysis` or `CallPrep`). Chat returns grounded text.
+Analysis and call prep use `response_mime_type="application/json"` with a Pydantic `response_schema` (`LeadAnalysis` or `CallPrep`). Chat returns grounded text.
 
 ### 5.2 Prompt builders (`backend/app/prompts/`)
 
-| Builder | Context injected | Key rules | Output |
+Grounding behavior (no invented facts, no financing assumptions) is defined in [`PRD.md`](./PRD.md) section 8; the table lists what each builder injects and its builder-specific rules.
+
+| Builder | Context injected | Builder-specific rules | Output |
 |---|---|---|---|
-| `lead_analysis.py` | Name, mobile, email, location, requirement, budget, timeline, message | Distinguish customer objections from missing information; ban unsupported market claims | Six analysis sections, priority score (0–100), category (`HOT`/`WARM`/`COLD`) |
-| `lead_chat.py` | Full lead details, AI analysis, chat history | Strict grounding; when a detail is missing, state that it is not available in the lead details instead of inventing it | Grounded text reply |
-| `call_prep.py` | Lead details, AI analysis, priority score, chat history | Exactly 3–4 discovery questions; do not re-ask known details; never assume financing or a home loan | Seven-section `CallPrep` |
+| `lead_analysis.py` | Name, mobile, email, location, requirement, budget, timeline, message | Distinguish customer objections from missing information; ban unsupported market claims | Six analysis sections, priority score, category |
+| `lead_chat.py` | Full lead details, AI analysis, chat history | State that a detail is not available in the lead details instead of inventing it | Grounded text reply |
+| `call_prep.py` | Lead details, AI analysis, priority score, chat history | Exactly 3–4 discovery questions; do not re-ask known details | Seven-section `CallPrep` |
 
-### 5.3 Priority scoring
-
-| Category | Score range |
-|---|---|
-| `HOT` | 80–100 |
-| `WARM` | 50–79 |
-| `COLD` | 0–49 |
-
-The score reflects budget clarity, timeline urgency, and requirement specificity. `GET /api/leads` returns leads sorted by `priority_score` in descending order.
+`GET /api/leads` returns leads sorted by `priority_score` in descending order. Score ranges and categories are defined in the PRD.
 
 ---
 
@@ -226,7 +219,7 @@ The score reflects budget clarity, timeline urgency, and requirement specificity
 |---|---|---|
 | `LeadCreate` | Incoming lead payload | `name`, `mobile_number`, `email`, `location`, `property_requirement`, `budget`, `buying_timeline`, `customer_message` |
 | `LeadResponse` | Stored lead returned to clients | All `LeadCreate` fields plus `id` (UUID), timestamp, nested `ai_analysis` |
-| `LeadAnalysis` | Structured AI analysis | `lead_summary`, `customer_intent`, `key_requirements`, `objections_concerns`, `recommended_next_action`, `suggested_response`, `priority_score`, `priority` |
+| `LeadAnalysis` | Structured AI analysis | `lead_summary`, `customer_intent`, `key_requirements`, `objections_concerns`, `recommended_next_action`, `suggested_response`, `priority_score` (0–100), `priority` (`HOT` / `WARM` / `COLD`) |
 | `ChatMessage` | Single chat entry | `role` (`"user"` or `"model"`), `message`, `timestamp` |
 | `ChatRequest` / `ChatResponse` | Chat endpoint payloads | Message in; assistant reply and history out |
 | `CallPrep` | Call briefing | `call_objective`, `key_talking_points`, `likely_objection`, `suggested_objection_handling`, `questions_to_ask`, `suggested_opening`, `desired_outcome` |
@@ -255,7 +248,7 @@ Interactive documentation is served at `/docs` (OpenAPI).
 
 | Condition | Status | Behavior |
 |---|---|---|
-| Invalid or missing fields | 422 | Raised automatically by Pydantic validation |
+| Invalid or missing fields (including invalid mobile/email) | 422 | Raised automatically by Pydantic validation |
 | Unknown `lead_id` | 404 | Returned by lead lookups |
 | Call prep without prior analysis | 422 | `MissingAnalysisError` raised by the call prep service |
 | Gemini timeout or API failure | 503 | Caught and reported; on lead creation the lead is saved with `ai_analysis = None` |
@@ -271,22 +264,10 @@ If connectivity drops during intake, the lead is preserved and returned with `20
 - **Secret isolation:** `GEMINI_API_KEY` is loaded only in `backend/app/config.py` and is never included in API responses, client bundles, or frontend requests.
 - **Input validation:** mobile numbers (10–12 digits) and email addresses are validated server-side with regex-backed Pydantic fields.
 - **CORS:** `BACKEND_CORS_ORIGINS` restricts browser access to trusted frontend origins.
-- **Context isolation:** AI prompts only ever include the data of the lead being processed.
 
 ---
 
-## 10. Testing Strategy
-
-| Level | Scope | Location |
-|---|---|---|
-| Unit | 47 automated backend tests | `backend/app/tests/` |
-| Schema | `test_call_prep.py` (CallPrep validation, `MissingAnalysisError` guard); `test_contact_info.py` (phone and email validation, backward compatibility); `test_lead_analysis_schema.py` (score bounds, priority literals) | `backend/app/tests/` |
-| Live integration | 11-step end-to-end run against the running server and the real Gemini API | `test_e2e_live.py` |
-| Frontend build | Type check and bundle with `tsc -b && vite build` | `frontend/` |
-
----
-
-## 11. Deployment Architecture
+## 10. Deployment Architecture
 
 Planned deployment separates the static frontend from the API service.
 
@@ -298,7 +279,7 @@ flowchart LR
 
 ---
 
-## 12. Design Trade-offs
+## 11. Design Trade-offs
 
 | Decision | Benefit | Trade-off and mitigation |
 |---|---|---|
