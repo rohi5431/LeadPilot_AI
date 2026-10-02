@@ -324,7 +324,8 @@ npm run build
 
 AI assistance was used during development as a development and reasoning aid.
 
-- **ChatGPT** — Used for architecture discussions, understanding system design and technical trade-offs, prompt design, debugging, and reasoning through implementation decisions.
-- **Claude** — Used for presentation and documentation support, including creating and structuring the **ARCHITECTURE.md, TASK.md, PRD.md, and README.md** files.
+* **ChatGPT** — Used for architecture discussions, understanding system design and technical trade-offs, prompt design, debugging, and reasoning through implementation decisions.
+* **Claude** — Used for presentation and documentation support, including creating and structuring the **ARCHITECTURE.md, TASK.md, PRD.md, and README.md** files.
 
-All architectural decisions, prompt design rules, state isolation logic, and custom feature implementation were reviewed, verified, and tested by the author. The author is responsible for understanding and explaining the submitted code and technical decisions.
+All architectural decisions, prompt design rules, state isolation logic, and custom feature implementations were reviewed, verified, and tested during development. The final implementation was validated to ensure that the system behavior and technical decisions were understood and consistent with the project requirements.
+
