@@ -14,7 +14,7 @@ services:
         sync: false
 
   - type: web
-    name: leadpilot-frontend
+    name: LeadPilot_Frontend1
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: dist
